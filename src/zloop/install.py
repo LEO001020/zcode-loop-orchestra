@@ -19,11 +19,24 @@ from typing import Any, Optional, Union
 
 from . import paths
 
-SEVEN_EVENTS = [
+# The platform supports 7 hook events (VOL-02 §1.1), but ZLoop registers only
+# the 5 post-execution ones: PreToolUse/PermissionRequest spawn a process
+# before EVERY tool call (hot-path tax), while PostToolUse(+Failure) already
+# carries tool name/input/call id and the fully structured result.
+# Second independent audit 2026-09-02, decision D-9.
+KNOWN_EVENTS = [
     "SessionStart",
     "UserPromptSubmit",
     "PreToolUse",
     "PermissionRequest",
+    "PostToolUse",
+    "PostToolUseFailure",
+    "Stop",
+]
+
+REGISTERED_EVENTS = [
+    "SessionStart",
+    "UserPromptSubmit",
     "PostToolUse",
     "PostToolUseFailure",
     "Stop",
@@ -72,7 +85,7 @@ def _hooks_block(hook_command: str, args: list, timeout_ms: int) -> dict:
             ev: [{"hooks": [{"type": "process",
                             "command": hook_command,
                             "args": list(args)}]}]
-            for ev in SEVEN_EVENTS
+            for ev in REGISTERED_EVENTS
         },
     }
 
@@ -120,7 +133,7 @@ def install_hooks(hook_command: str, args: list, *, timeout_ms: int = 8000,
     merged["hooks"] = _hooks_block(hook_command, args, timeout_ms)
     _atomic_write(path, merged)
     return {"ok": True, "config_path": str(path),
-            "events": len(SEVEN_EVENTS), "backup": backup_path}
+            "events": len(REGISTERED_EVENTS), "backup": backup_path}
 
 
 def uninstall_hooks(config_path: Optional[PathLike] = None) -> dict:

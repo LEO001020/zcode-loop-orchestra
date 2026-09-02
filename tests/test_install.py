@@ -27,11 +27,11 @@ def _read(cfg: Path) -> dict:
     return json.loads(cfg.read_text(encoding="utf-8"))
 
 
-def test_install_writes_seven_events_and_status(tmp_path: Path):
+def test_install_writes_five_events_and_status(tmp_path: Path):
     cfg = tmp_path / "cli" / "config.json"
     r = zi.install_hooks(CMD, ARGS, config_path=cfg)
     assert r["ok"] is True
-    assert r["events"] == 7
+    assert r["events"] == 5
     assert r["config_path"] == str(cfg)
 
     data = _read(cfg)
@@ -40,20 +40,19 @@ def test_install_writes_seven_events_and_status(tmp_path: Path):
     assert hooks["enabled"] is True
     assert hooks["timeoutMs"] == 8000
     assert hooks["maxOutputBytes"] == 32768
-    assert list(hooks["events"]) == zi.SEVEN_EVENTS
-    assert set(hooks["events"]) == set(zi.SEVEN_EVENTS)
+    assert list(hooks["events"]) == zi.REGISTERED_EVENTS
+    assert set(hooks["events"]) == set(zi.REGISTERED_EVENTS)
     for matchers in hooks["events"].values():
         assert matchers == [{"hooks": [{"type": "process",
                                          "command": CMD,
                                          "args": ["handle"]}]}]
     assert list(hooks["events"]) == ["SessionStart", "UserPromptSubmit",
-                                     "PreToolUse", "PermissionRequest",
                                      "PostToolUse", "PostToolUseFailure", "Stop"]
 
     st = zi.hook_status(config_path=cfg)
     assert st["config_exists"] is True
     assert st["hooks_enabled"] is True
-    assert st["event_count"] == 7
+    assert st["event_count"] == 5
     assert st["zloop_managed"] is True
     assert st["command"] == CMD
 
@@ -62,11 +61,11 @@ def test_install_is_idempotent(tmp_path: Path):
     cfg = tmp_path / "cli" / "config.json"
     assert zi.install_hooks(CMD, ARGS, config_path=cfg)["ok"] is True
     r2 = zi.install_hooks(CMD, ARGS, config_path=cfg)
-    assert r2["ok"] is True and r2["events"] == 7
+    assert r2["ok"] is True and r2["events"] == 5
     data = _read(cfg)
-    assert set(data["hooks"]["events"]) == set(zi.SEVEN_EVENTS)
+    assert set(data["hooks"]["events"]) == set(zi.REGISTERED_EVENTS)
     st = zi.hook_status(config_path=cfg)
-    assert st["event_count"] == 7 and st["command"] == CMD
+    assert st["event_count"] == 5 and st["command"] == CMD
 
 
 def test_install_preserves_unrelated_keys_and_uninstall(tmp_path: Path):
