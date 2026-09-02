@@ -3,7 +3,7 @@
   "description": "Machine-readable probe status registry for ZLoop M0 (VOL-20 probe catalog). Human-readable companion: docs/VENDOR_CONTRACTS.md. Spec basis: E:\\zcode\\zloop-spec (VOL-02, VOL-20, DECISIONS.md).",
   "generated_at": "2026-09-02",
   "spec_library": "E:\\zcode\\zloop-spec",
-  "milestone": "M0 substantially complete (go/no-go set closed); second independent audit (razor) executed a deletion pass (D-7..D-12); M1 hook install executed 2026-09-02 with 5 post-execution events (D-9)",
+  "milestone": "M0 done; M1 deployed (5 hooks); M2/M3 core; M4 research (Kimi K1 live-verified, D-10); M5 c2c host-side; M6 materialize+promote+supervisor with D-8 controller token in code; M7 backend code landed (live test blocked on codex login). 193 tests green. Round 2: 2026-09-02.",
   "m0_exit_criteria_ref": "E:\\zcode\\zloop-spec\\VOL-20-M0-PROBES.md#6 (six items, not yet all met)",
   "status_legend": {
     "PASS": "probe executed and passed",

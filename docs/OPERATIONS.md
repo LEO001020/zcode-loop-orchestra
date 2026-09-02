@@ -2,7 +2,7 @@
 
 > 适用对象：ZLoop 的安装、卸载、诊断、回滚，以及本机遗留（OLD-LOOP）卫生项处置。
 > 契约依据：`E:\zcode\zloop-spec\VOL-05-HOOK-BINDING.md`（安装面）、VOL-20 P-HYG1、VOL-21 M1 gate。
-> **现状（2026-09-02，M0）**：`zloop install / uninstall / doctor / rollback` 是 M1 交付物，CLI 入口已在 `pyproject.toml` 声明但尚未实现。本文描述的是已冻结的**运维契约**；在 M1 落地前不要假定这些命令可执行。
+> **现状（2026-09-02，round 2）**：`zloop install / uninstall / doctor` 已实现并有测试（M1 交付物；hooks 已在本机用户级 config 安装，5 事件，见 §2 与 D-9）。`zloop rollback` 是 M10 交付物，尚未实现。`zloop-hook` capture / bind-token / recovery 已实现（M2）。§8 是 v0.2 命令面参考——其中标注 "wiring in progress" 的命令是本轮并行 agent 正在接线、**尚未在代码中出现**的，在 `zloop --help` 确认之前不要假定可执行。
 
 ---
 
@@ -18,7 +18,7 @@
    - 只走用户级 config（或 plugin `hooks/hooks.json`）；**workspace 级 `.zcode/config.json` 的 hooks 会被 ZCode 整体忽略**。
    - 注册前若 config 中已有 hooks，先做备份到 `~/.zloop/hygiene-backup/`。
 2. `hooks` 块必须带 `enabled:true`（否则默认禁用）。默认 `timeoutMs=60000`、`maxOutputBytes=32768`（hook 自身 stdout 上限）。
-3. 注册全部 **7 个已文档事件**（SessionStart / UserPromptSubmit / PreToolUse / PermissionRequest / PostToolUse / PostToolUseFailure / Stop），M1 阶段为 no-op。
+3. 注册 **5 个 post-execution 事件**（D-9：SessionStart / UserPromptSubmit / PostToolUse / PostToolUseFailure / Stop；PreToolUse / PermissionRequest 因热路径进程税被删除）。hook 代码本身保留 7 事件分派——若配置里手工注册了全部 7 个，仍能正常工作。
 4. **关键限制**：hook 配置按 ZCode session **快照**——安装/改动只对**新开的 session** 生效（见 §7 验证清单）。
 
 ## 3. 卸载（`zloop uninstall`）
@@ -70,3 +70,55 @@ hook 安装后按此顺序验证（hook 配置按 session 快照，**旧 session
    - 确认 session 确实是新开的（不是恢复/复用的旧会话）；
    - 检查 `~/.zcode/cli/config.json` 中 zloop hooks 块存在且 `enabled:true`；
    - 运行 `zloop doctor` 查看诊断输出。
+
+---
+
+## 8. Command reference (v0.2)
+
+> 快速参考：`docs/COMMANDS.md`（一页版，含退出码）。本节记录 v0.2 新命令面的**运维语义**。
+> 诚实边界：以下 "wiring in progress" 的命令由本轮并行 CLI agent 接线——快照时 `src/zloop/cli.py` 已出现 stage/wave/workspace 导入与脚手架（21:23 仍在写入），但**子命令尚未在 parser 注册**；以 `zloop --help` 实测为准（no-fake-success，VOL-01 §3.3）。
+
+### 8.1 退出码（全命令统一契约）
+
+| code | 含义 |
+|---|---|
+| 0 | ok |
+| 2 | usage（argparse 参数错误） |
+| 3 | S_DEGRADED — S 损坏/不可写，fail-closed（I4） |
+| 4 | bind-token wait 超时（`--wait-claim` 到期未被 hook claim；通常是跑在了后台，P2-13） |
+| 5 | blocked — 前置条件不满足（未注册项目 / 未知 run / 状态不允许） |
+| 130 | Ctrl-C 中断 |
+
+### 8.2 v0.2 新命令面（wiring in progress this round）
+
+| 命令 | 语义（契约） | 状态 |
+|---|---|---|
+| `zloop stage begin <objective-slice> [--risk REQUESTED]` | 在当前 run 创建 stage（PLANNING→EXECUTING）：确定性 risk floor（VOL-08 §2）、clean-base 门槛（I37）、锁定 base ref/tree | **wiring in progress**（stage.py 库层已实现+测试；CLI 子命令待并行 agent 落地） |
+| `zloop stage status [RID]` / `zloop stage close` | stage 行 / FSM 终态 | **wiring in progress** |
+| `zloop wave propose` | 提交 wave proposal → host-side final ruling（`validate_wave`：DAG 无环、write_scope 两两不相交或显式 depends_on 序列化、risk ≥ floor、network_policy 形状） | **wiring in progress**（wave.py 库层已实现+测试） |
+| `zloop wave start` | 启动 wave：每 packet 全新 launch_id + 全新 workspace（I34）；结果过 I6 四重 fence | **wiring in progress**；**FOREGROUND 命令**（见 8.3） |
+| `zloop wave cancel` | 写 `cancel_requested`（D-8 语义，见 8.4） | **wiring in progress** |
+| `zloop research run <query>` | Research Broker 单次检索（Kimi K1 单路，D-10；lane 代码待 M4） | **wiring in progress**（M4） |
+| `zloop verify-run [RID]`（升级版） | 目标完成判据：run 存在且 CLOSED +（升级方向）promoted stage 全部落地。当前已实现版本：run 存在且 CLOSED 即 ok，否则 exit 5 | 已实现（基础版）；升级项 **wiring in progress** |
+
+已稳定实现的命令（doctor / project / run / attach / detach / binding / history / checkpoint / install / uninstall / verify-run）见 `docs/COMMANDS.md`。
+
+### 8.3 FOREGROUND 规则（run start / attach / wave start）
+
+- `zloop run start` / `zloop attach` /（落地后的）`zloop wave start` 是**前台命令**：
+  1. bind-token marker（`ZLOOP_BIND_TOKEN=<nonce>`）必须出现在**前台** Bash tool_response 的 stdout 里，PostToolUse hook 才能扫到并 claim（I32）。后台运行的 tool_response 不含 stdout ⇒ token 永远无法被 claim（P2-13）。
+  2. 平台硬上限：单次前台 Bash 调用 ≤ **600,000 ms（600s）**。因此 `--wait-claim N` 的 N 必须远小于 600；超时未 claim ⇒ exit 4 + stderr 警告"re-run in foreground"。
+  3. 超过 10 分钟的 wave **不得**在前台死等：用 `wave start`（后台化）+ 结束 turn，等 task-notification 重新唤醒 root（D-2：await 参考实现 = background + notification；`await --timeout` 上限 540s）。
+
+### 8.4 Controller-token cancel 语义（D-8）
+
+- run 的所有权 = S 内 **CAS token**（`runs.controller_nonce/controller_pid/controller_pid_start`），不是长持 OS 锁——旧设计（wave 长进程持 run.lock + cancel 需要 S 事务）会自我锁死，已废弃。
+- `cancel` 是**命令输入，不是生命周期迁移**：`request_cancel` 只写 `cancel_requested=1`（无需 controller token）；owner 在自己的下一个 tick 观察到它，由 **owner** 执行状态迁移（ACTIVE→CANCELLED 等）。
+- 接管（takeover）需要机械死亡证明：新 controller 只有带着旧 `(pid, pid_start_time)` 的死亡证据才能 CAS 换主（`claim_controller(expected_old=…)`）；TTL 永不单独决定所有权（I43）。
+- OS `RunLock` 只包住单次 mutation，绝不跨 wave 生命周期持有。
+
+### 8.5 5-hook 注册（D-9）
+
+- `zloop install` 只注册 **5 个 post-execution 事件**：SessionStart / UserPromptSubmit / PostToolUse / PostToolUseFailure / Stop（`process` 型、无 matcher、`timeoutMs=8000`、`maxOutputBytes=32768`、用户级 config）。
+- 理由：PreToolUse / PermissionRequest 会在**每次工具调用前**同步拉起进程（热路径税）；PostToolUse(+Failure) 已携带完整结构化结果。第二次独立审计（2026-09-02）裁定。
+- hook 进程本身仍分派全部 7 个已文档事件（防御性兼容：手工注册 7 个也能工作）。

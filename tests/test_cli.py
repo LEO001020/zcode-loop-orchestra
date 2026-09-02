@@ -25,8 +25,9 @@ SRC = REPO_ROOT / "src"
 sys.path.insert(0, str(SRC))
 
 from zloop import __version__          # noqa: E402
-from zloop import db as zdb            # noqa: E402
-from zloop import ids, paths           # noqa: E402
+from zloop import db as zdb           # noqa: E402
+from zloop import ids, paths          # noqa: E402
+from zloop import stage as zstage     # noqa: E402
 
 
 def _cli_env(data_root: Path) -> dict:
@@ -124,7 +125,12 @@ def test_usage_errors_exit_2(git_repo, data_root):
 
 def test_commands_require_registered_project(tmp_path, data_root):
     for args in (["run", "list"], ["binding", "status"], ["verify-run"],
-                 ["run", "close", "R001"]):
+                 ["run", "close", "R001"],
+                 ["stage", "begin", "--objective", "x"],
+                 ["stage", "status"], ["stage", "status", "S01"],
+                 ["stage", "close", "S01"],
+                 ["wave", "propose", "nope.json"], ["wave", "start", "W1"],
+                 ["wave", "cancel", "W1"]):
         r = run_cli(*args, cwd=tmp_path, data_root=data_root)
         assert r.returncode == 5, (args, r.stderr)
     r = run_cli("history", "search", "x", cwd=tmp_path, data_root=data_root)
@@ -132,6 +138,11 @@ def test_commands_require_registered_project(tmp_path, data_root):
         assert r.returncode == 5
     else:
         assert r.returncode == 0
+    rr = run_cli("research", "run", "spec.json", cwd=tmp_path, data_root=data_root)
+    if _have_module("zloop.research.broker"):
+        assert rr.returncode == 5
+    else:
+        assert rr.returncode == 0
 
 
 def test_project_attach_list_idempotent(git_repo, data_root):
@@ -476,3 +487,443 @@ def test_install_uninstall_lazy_tolerance(git_repo, data_root, tmp_path):
         r2 = run_cli("uninstall", cwd=git_repo, data_root=data_root)
         assert r2.returncode == 0
         assert "module not available (parallel integration pending)" in r2.stdout
+
+
+# ---- stage begin / status / close (VOL-08 §3, I37) ---------------------------
+
+
+def _git_query(repo: Path, *a):
+    return subprocess.run(["git", *a], cwd=str(repo), capture_output=True,
+                          text=True, timeout=60).stdout.strip()
+
+
+def _stage_begin(repo: Path, data_root: Path,
+                 objective="implement the milestone 4/6 cli surface",
+                 risk=None):
+    args = ["stage", "begin", "--objective", objective]
+    if risk:
+        args += ["--risk", risk]
+    return run_cli(*args, cwd=repo, data_root=data_root)
+
+
+def test_stage_begin_dirty_base_blocked(git_repo, data_root):
+    _start_run(git_repo, data_root)
+    (git_repo / "uncommitted.txt").write_text("user work in progress\n",
+                                              encoding="utf-8")
+    r = _stage_begin(git_repo, data_root, "slice on a dirty base")
+    assert r.returncode == 5
+    assert "BLOCKED_DIRTY_BASE" in r.stdout + r.stderr
+    assert "commit your work" in (r.stdout + r.stderr)
+    # fail-closed: no stage row was created
+    pid = _only_project_id()
+    conn = zdb.connect(paths.project_dir(pid))
+    try:
+        assert conn.execute("SELECT COUNT(*) FROM stages").fetchone()[0] == 0
+    finally:
+        conn.close()
+
+
+def test_stage_begin_clean_creates_s01(git_repo, data_root):
+    lines = _start_run(git_repo, data_root, "objective with stages")
+    rid = json.loads(lines[1])["run_id"]
+    r = _stage_begin(git_repo, data_root, "implement the stage cli surface")
+    assert r.returncode == 0, r.stderr
+    st = json.loads(r.stdout)
+    head = _git_query(git_repo, "rev-parse", "HEAD")
+    tree = _git_query(git_repo, "rev-parse", "HEAD^{tree}")
+    assert st["stage_id"] == "S01"
+    assert st["run_id"] == rid
+    assert st["state"] == "PLANNING"
+    assert st["risk_requested"] == "NORMAL"
+    assert st["risk_floor"] == "NORMAL"
+    assert st["risk_effective"] == "NORMAL"
+    assert st["expected_canonical_head"] == head
+    assert st["canonical_dirty_digest"] == ""       # I37 clean proof
+    assert st["stage_base_ref"] == head
+    assert st["stage_base_tree"] == tree
+    # the host floor can only raise (LOW request under a CRITICAL keyword floor)
+    r2 = _stage_begin(git_repo, data_root, "harden the live trading path",
+                      risk="LOW")
+    assert r2.returncode == 0, r2.stderr
+    st2 = json.loads(r2.stdout)
+    assert st2["stage_id"] == "S02"                 # per-run numbering
+    assert st2["risk_floor"] == "CRITICAL"
+    assert st2["risk_effective"] == "CRITICAL"      # max(LOW, CRITICAL)
+    # status: all stages of the current run, or exactly one
+    s = run_cli("stage", "status", cwd=git_repo, data_root=data_root)
+    assert s.returncode == 0
+    assert [x["stage_id"] for x in json.loads(s.stdout)] == ["S01", "S02"]
+    s1 = run_cli("stage", "status", "S01", cwd=git_repo, data_root=data_root)
+    assert s1.returncode == 0
+    assert json.loads(s1.stdout)["stage_id"] == "S01"
+    s9 = run_cli("stage", "status", "S99", cwd=git_repo, data_root=data_root)
+    assert s9.returncode == 5
+
+
+def test_stage_begin_requires_active_run(git_repo, data_root):
+    a = run_cli("project", "attach", cwd=git_repo, data_root=data_root)
+    assert a.returncode == 0
+    r = _stage_begin(git_repo, data_root)
+    assert r.returncode == 5
+    assert "run start" in (r.stdout + r.stderr)
+    # a CLOSED run is not enough either
+    lines = _start_run(git_repo, data_root)
+    rid = json.loads(lines[1])["run_id"]
+    assert run_cli("run", "close", rid, cwd=git_repo,
+                   data_root=data_root).returncode == 0
+    r2 = _stage_begin(git_repo, data_root)
+    assert r2.returncode == 5
+    assert "run start" in (r2.stdout + r2.stderr)
+
+
+def test_stage_close_walks_to_closed(git_repo, data_root):
+    _start_run(git_repo, data_root)
+    assert _stage_begin(git_repo, data_root).returncode == 0
+    r = run_cli("stage", "close", "S01", cwd=git_repo, data_root=data_root)
+    assert r.returncode == 0, r.stderr
+    st = json.loads(r.stdout)
+    assert st["state"] == "CLOSED"
+    assert st["closed_via"][-1] == "CLOSED"
+    # terminal already -> idempotent no-op
+    r2 = run_cli("stage", "close", "S01", cwd=git_repo, data_root=data_root)
+    assert r2.returncode == 0
+    assert json.loads(r2.stdout)["state"] == "CLOSED"
+    # unknown stage -> blocked
+    r3 = run_cli("stage", "close", "S99", cwd=git_repo, data_root=data_root)
+    assert r3.returncode == 5
+
+
+def test_stage_close_blocked_goes_cancelled(git_repo, data_root):
+    lines = _start_run(git_repo, data_root)
+    rid = json.loads(lines[1])["run_id"]
+    assert _stage_begin(git_repo, data_root).returncode == 0
+    # drive S01 to BLOCKED in-process (PLANNING -> EXECUTING -> BLOCKED)
+    pid = _only_project_id()
+    pdir = paths.project_dir(pid)
+    conn = zdb.connect(pdir)
+    try:
+        store = zdb.ControlStore(pdir, conn, project_id=pid)
+        zstage.transition_stage(store, rid, "S01", "EXECUTING")
+        zstage.transition_stage(store, rid, "S01", "BLOCKED")
+    finally:
+        conn.close()
+    r = run_cli("stage", "close", "S01", cwd=git_repo, data_root=data_root)
+    assert r.returncode == 0, r.stderr
+    st = json.loads(r.stdout)
+    assert st["state"] == "CANCELLED"     # BLOCKED -> CANCELLED (VOL-08 §4)
+    assert st["closed_via"] == ["CANCELLED"]
+
+
+# ---- wave propose / start / cancel (VOL-09) ----------------------------------
+
+
+def _packet(pid, scope, **kw):
+    p = {"packet_id": pid, "goal": f"do {pid}",
+         "write_scope": scope, "acceptance": ["python -V"],
+         "risk_class": "NORMAL", "network_policy": "none"}
+    p.update(kw)
+    return p
+
+
+def _write_packets(tmp_path: Path, packets, name="packets.json") -> Path:
+    f = tmp_path / name
+    f.write_text(json.dumps({"packets": packets}), encoding="utf-8")
+    return f
+
+
+def _wave_setup(git_repo, data_root, tmp_path, packets,
+                objective="wave cli objective"):
+    """run start -> stage begin -> wave propose; returns (run_id, propose result)."""
+    lines = _start_run(git_repo, data_root, objective)
+    rid = json.loads(lines[1])["run_id"]
+    assert _stage_begin(git_repo, data_root, objective + " (stage slice)")\
+        .returncode == 0
+    f = _write_packets(tmp_path, packets)
+    r = run_cli("wave", "propose", str(f), cwd=git_repo, data_root=data_root)
+    return rid, r
+
+
+def test_wave_propose_inserts_pending(git_repo, data_root, tmp_path):
+    packets = [_packet("P01", ["src/a/**"]),
+               _packet("P02", ["src/b/**"], depends_on=["P01"], max_turns=20)]
+    rid, r = _wave_setup(git_repo, data_root, tmp_path, packets)
+    assert r.returncode == 0, r.stderr
+    out = json.loads(r.stdout)
+    assert out["wave"] == "W1"
+    assert [p["packet_id"] for p in out["packets"]] == ["P01", "P02"]
+    assert all(p["state"] == "PENDING" for p in out["packets"])
+    pid = _only_project_id()
+    conn = zdb.connect(paths.project_dir(pid))
+    try:
+        rows = [dict(x) for x in conn.execute(
+            "SELECT * FROM packets ORDER BY packet_id")]
+        assert [x["packet_id"] for x in rows] == ["P01", "P02"]
+        assert all(x["state"] == "PENDING" and x["stage_id"] == "S01"
+                   and x["run_id"] == rid for x in rows)
+        assert json.loads(rows[1]["deps_json"]) == ["P01"]
+        assert rows[1]["max_turns"] == 20
+        kinds = [x["kind"] for x in conn.execute("SELECT kind FROM events")]
+        assert kinds.count("packet_created") == 2
+        assert "wave_proposed" in kinds
+    finally:
+        conn.close()
+    # a second proposal numbers the next wave W2 (per-stage, VOL-08 §6)
+    f2 = _write_packets(tmp_path, [_packet("P03", ["src/c/**"])],
+                        name="packets2.json")
+    r2 = run_cli("wave", "propose", str(f2), cwd=git_repo, data_root=data_root)
+    assert r2.returncode == 0, r2.stderr
+    assert json.loads(r2.stdout)["wave"] == "W2"
+
+
+def test_wave_propose_cycle_rejected(git_repo, data_root, tmp_path):
+    packets = [_packet("P01", ["src/a/**"], depends_on=["P02"]),
+               _packet("P02", ["src/b/**"], depends_on=["P01"])]
+    _rid, r = _wave_setup(git_repo, data_root, tmp_path, packets)
+    assert r.returncode == 5
+    assert "cycle" in (r.stdout + r.stderr)
+    # nothing was written (fail-closed, I4)
+    pid = _only_project_id()
+    conn = zdb.connect(paths.project_dir(pid))
+    try:
+        assert conn.execute("SELECT COUNT(*) FROM packets").fetchone()[0] == 0
+    finally:
+        conn.close()
+
+
+def test_wave_propose_requires_stage(git_repo, data_root, tmp_path):
+    _start_run(git_repo, data_root)
+    f = _write_packets(tmp_path, [_packet("P01", ["src/a/**"])])
+    r = run_cli("wave", "propose", str(f), cwd=git_repo, data_root=data_root)
+    assert r.returncode == 5
+    assert "stage begin" in (r.stdout + r.stderr)
+
+
+def test_wave_start_mock(git_repo, data_root, tmp_path):
+    """wave start W1 --backend mock: supervisor-pending -> graceful notice;
+    supervisor present -> full mock wave (launch -> collect -> materialize).
+    Either way the verify-run path (stage close -> run close -> verify) must
+    reach exit 0."""
+    packets = [_packet("P01", ["src/a/**"]),
+               _packet("P02", ["src/b/**"], depends_on=["P01"])]
+    rid, r = _wave_setup(git_repo, data_root, tmp_path, packets,
+                         objective="wave start objective")
+    assert r.returncode == 0, r.stderr
+    r = run_cli("wave", "start", "W1", "--backend", "mock",
+                cwd=git_repo, data_root=data_root)
+    assert r.returncode == 0, r.stderr
+    pid = _only_project_id()
+    pdir = paths.project_dir(pid)
+    if _have_module("zloop.supervisor"):
+        summary = json.loads(r.stdout)
+        assert summary["wave"] == "W1"
+        assert summary["ok"] is True
+        assert summary["materialized"] == ["P01", "P02"]
+        assert summary["blocked"] == []
+    else:
+        assert "module not available (parallel integration pending)" in r.stdout
+        # the pre-supervisor side effects are durable: stage EXECUTING,
+        # packets still PENDING, staging worktree at the locked stage base
+        conn = zdb.connect(pdir)
+        try:
+            st = conn.execute(
+                "SELECT state FROM stages WHERE stage_id='S01'").fetchone()
+            assert st["state"] == "EXECUTING"
+            states = [x["state"] for x in conn.execute(
+                "SELECT state FROM packets ORDER BY packet_id")]
+            assert states == ["PENDING", "PENDING"]
+        finally:
+            conn.close()
+        wt = pdir / "workspaces" / "S01" / "staging"
+        assert wt.is_dir() and (wt / ".git").exists()
+        assert _git_query(wt, "rev-parse", "HEAD") == \
+            _git_query(git_repo, "rev-parse", "HEAD")
+    # verify-run path: stage close -> run close -> verify ok
+    sc = run_cli("stage", "close", "S01", cwd=git_repo, data_root=data_root)
+    assert sc.returncode == 0, sc.stderr
+    assert json.loads(sc.stdout)["state"] == "CLOSED"
+    rc = run_cli("run", "close", rid, cwd=git_repo, data_root=data_root)
+    assert rc.returncode == 0, rc.stderr
+    v = run_cli("verify-run", rid, cwd=git_repo, data_root=data_root)
+    assert v.returncode == 0, v.stderr
+    assert json.loads(v.stdout)["verify"] == "ok"
+
+
+def test_wave_start_refusals(git_repo, data_root, tmp_path):
+    packets = [_packet("P01", ["src/a/**"])]
+    _rid, r = _wave_setup(git_repo, data_root, tmp_path, packets)
+    assert r.returncode == 0, r.stderr
+    # unknown wave -> blocked
+    r9 = run_cli("wave", "start", "W9", cwd=git_repo, data_root=data_root)
+    assert r9.returncode == 5
+    # codex backend: auth currently broken on this machine -> blocked
+    rc = run_cli("wave", "start", "W1", "--backend", "codex",
+                 cwd=git_repo, data_root=data_root)
+    assert rc.returncode == 5
+    out = rc.stdout + rc.stderr
+    assert "codex backend requires `codex login`" in out
+    assert "auth currently broken" in out
+    # unknown backend -> usage error
+    rb = run_cli("wave", "start", "W1", "--backend", "bogus",
+                 cwd=git_repo, data_root=data_root)
+    assert rb.returncode == 2
+
+
+def test_wave_cancel(git_repo, data_root):
+    lines = _start_run(git_repo, data_root, "cancel me")
+    rid = json.loads(lines[1])["run_id"]
+    r = run_cli("wave", "cancel", "W1", cwd=git_repo, data_root=data_root)
+    assert r.returncode == 0, r.stderr
+    out = json.loads(r.stdout)
+    assert out["cancel_requested"] is True
+    assert out["run_id"] == rid
+    assert "CANCELLING" in out["note"]
+    assert "tick" in out["note"]
+    pid = _only_project_id()
+    conn = zdb.connect(paths.project_dir(pid))
+    try:
+        row = conn.execute("SELECT cancel_requested FROM runs WHERE run_id=?",
+                           (rid,)).fetchone()
+        assert row["cancel_requested"] == 1
+    finally:
+        conn.close()
+    # D-8: no wave process needs to be live — the request persists, exit 0
+    r2 = run_cli("wave", "cancel", "W1", cwd=git_repo, data_root=data_root)
+    assert r2.returncode == 0
+    # but an ACTIVE run must exist to carry the request
+    assert run_cli("run", "close", rid, cwd=git_repo,
+                   data_root=data_root).returncode == 0
+    r3 = run_cli("wave", "cancel", "W1", cwd=git_repo, data_root=data_root)
+    assert r3.returncode == 5
+
+
+# ---- verify-run stage awareness (VOL-08 §7) ---------------------------------
+
+
+def test_verify_run_open_stage_blocked(git_repo, data_root):
+    lines = _start_run(git_repo, data_root, "goal needing stages")
+    rid = json.loads(lines[1])["run_id"]
+    assert _stage_begin(git_repo, data_root).returncode == 0
+    # run closed while a stage is still open -> verify blocked
+    assert run_cli("run", "close", rid, cwd=git_repo,
+                   data_root=data_root).returncode == 0
+    v = run_cli("verify-run", rid, cwd=git_repo, data_root=data_root)
+    assert v.returncode == 5
+    out = json.loads(v.stdout)
+    assert out["verify"] == "blocked"
+    assert "S01" in out["reason"] and "PLANNING" in out["reason"]
+    assert out["stages"]["open"] == ["S01:PLANNING"]
+    # remediation: closing the stage lets the same run verify
+    assert run_cli("stage", "close", "S01", cwd=git_repo,
+                   data_root=data_root).returncode == 0
+    v2 = run_cli("verify-run", rid, cwd=git_repo, data_root=data_root)
+    assert v2.returncode == 0
+    assert json.loads(v2.stdout)["verify"] == "ok"
+    # a CANCELLED stage is terminal too (BLOCKED's only exit, VOL-08 §4)
+    lines2 = _start_run(git_repo, data_root, "second goal")
+    rid2 = json.loads(lines2[1])["run_id"]
+    assert _stage_begin(git_repo, data_root).returncode == 0
+    pid = _only_project_id()
+    pdir = paths.project_dir(pid)
+    conn = zdb.connect(pdir)
+    try:
+        store = zdb.ControlStore(pdir, conn, project_id=pid)
+        zstage.transition_stage(store, rid2, "S01", "CANCELLED")
+    finally:
+        conn.close()
+    assert run_cli("run", "close", rid2, cwd=git_repo,
+                   data_root=data_root).returncode == 0
+    v3 = run_cli("verify-run", rid2, cwd=git_repo, data_root=data_root)
+    assert v3.returncode == 0
+    assert json.loads(v3.stdout)["verify"] == "ok"
+
+
+# ---- research run (VOL-15, milestone 4) --------------------------------------
+
+
+class _FakeKimiLaneServer:
+    """Minimal loopback stand-in for `kimi web`: healthz answers 200 (so the
+    lane never spawns a real server), everything else 404 (so each question
+    settles fast into an error evidence record — lane behavior itself is the
+    parallel module's test concern, not the CLI's)."""
+
+    def __init__(self):
+        import http.server
+        import threading
+
+        class Handler(http.server.BaseHTTPRequestHandler):
+            def do_GET(self):
+                body = b"{}" if self.path == "/api/v1/healthz" else b"not found"
+                self.send_response(200 if self.path == "/api/v1/healthz" else 404)
+                self.send_header("Content-Type", "application/json")
+                self.send_header("Content-Length", str(len(body)))
+                self.end_headers()
+                self.wfile.write(body)
+
+            do_POST = do_GET
+
+            def log_message(self, *a):
+                pass
+
+        self._srv = http.server.ThreadingHTTPServer(("127.0.0.1", 0), Handler)
+        self.port = self._srv.server_address[1]
+        self._thread = threading.Thread(target=self._srv.serve_forever,
+                                        daemon=True)
+        self._thread.start()
+
+    def close(self):
+        self._srv.shutdown()
+        self._srv.server_close()
+        self._thread.join(timeout=5)
+
+
+def test_research_run_lazy_tolerance(git_repo, data_root, tmp_path, monkeypatch):
+    a = run_cli("project", "attach", cwd=git_repo, data_root=data_root)
+    assert a.returncode == 0
+    spec = tmp_path / "spec.json"
+    spec.write_text(json.dumps({"questions": [
+        {"id": "q1", "query": "what is 2+2 (probe)"}]}), encoding="utf-8")
+    if not _have_module("zloop.research.broker"):
+        r = run_cli("research", "run", str(spec), cwd=git_repo,
+                    data_root=data_root)
+        assert r.returncode == 0, r.stderr
+        assert "module pending (parallel integration)" in r.stdout
+        return
+    fake = _FakeKimiLaneServer()
+    try:
+        monkeypatch.setenv("ZLOOP_KIMI_URL", f"http://127.0.0.1:{fake.port}")
+        r = run_cli("research", "run", str(spec), cwd=git_repo,
+                    data_root=data_root)
+    finally:
+        fake.close()
+    assert r.returncode == 0, r.stderr
+    out = json.loads(r.stdout)
+    assert out["research_id"] == "RS001"
+    assert isinstance(out["results"], list) and len(out["results"]) == 1
+    rec = out["results"][0]
+    assert rec["question_id"] == "q1"
+    assert rec.get("error")            # lane unreachable -> error record,
+    assert rec.get("answer") is None    # never a crash, never a fake answer
+    # the full manifest (answers unbounded) lives in the research dir
+    pid = _only_project_id()
+    full = paths.project_dir(pid) / "research" / "RS001" / "manifest.json"
+    assert full.is_file()
+    assert out["full_manifest"] == str(full)
+
+
+def test_research_manifest_bounded_in_stdout():
+    """The stdout copy of a research manifest is bounded to 200-char fields
+    (VOL-15); the full answers stay in the on-disk manifest."""
+    from zloop import cli as zcli
+    long_answer = "x" * 5000
+    manifest = {"research_id": "RS001",
+                "results": [{"question_id": "q1", "answer": long_answer,
+                             "claim": long_answer[:300], "error": None}],
+                "openapi_digest": None}
+    bounded = zcli._bounded_research_manifest(manifest)
+    rec = bounded["results"][0]
+    assert rec["answer"].startswith("x")
+    assert len(rec["answer"]) <= 200 + len("…[truncated]")
+    assert rec["answer"].endswith("…[truncated]")
+    assert len(rec["claim"]) <= 200 + len("…[truncated]")
+    # the caller's manifest object is not mutated by the bounding pass
+    assert len(manifest["results"][0]["answer"]) == 5000

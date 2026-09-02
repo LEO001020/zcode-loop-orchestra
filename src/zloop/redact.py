@@ -38,6 +38,7 @@ SECRET_FILE_RE = re.compile(
 _SECRET_KEY_SEGMENTS = {
     "token", "secret", "password", "passwd", "credential", "credentials",
     "api_key", "apikey", "private_key", "access_key", "auth", "authorization",
+    "key",  # bare "key" errs safe (worker_env secret rejection depends on this)
 }
 
 
