@@ -34,10 +34,16 @@ SECRET_FILE_RE = re.compile(
     r"credentials\.json|auth\.json|wallet\.json)(\s|$|\"|')")
 
 # Dict keys whose NAME marks the value as secret ({"API_TOKEN": "x"}).
-SECRET_KEYNAME_RE = re.compile(
-    r"(?i)(^|[^A-Za-z0-9_])(API[_-]?KEY|TOKEN|SECRET|PASSWORD|PASSWD|"
-    r"CREDENTIAL|PRIVATE[_-]?KEY|ACCESS[_-]?KEY|AUTH)([^A-Za-z0-9_]|$)"
-    r"|(?i)^(API[_-]?KEY|TOKEN|SECRET|PASSWORD|PASSWD|CREDENTIAL)$")
+# Segment match (split on _-. and lowercase) — "MY_TOKEN" hits, "author" does not.
+_SECRET_KEY_SEGMENTS = {
+    "token", "secret", "password", "passwd", "credential", "credentials",
+    "api_key", "apikey", "private_key", "access_key", "auth", "authorization",
+}
+
+
+def key_is_secret(name: str) -> bool:
+    return any(seg in _SECRET_KEY_SEGMENTS
+               for seg in re.split(r"[\s_\-.]+", str(name).lower()) if seg)
 
 
 def redact_str(s: str) -> str:
@@ -58,7 +64,7 @@ def _walk(obj: Any) -> Any:
         out = {}
         for k, v in obj.items():
             ks = str(k)
-            if SECRET_FILE_RE.search(ks) or SECRET_KEYNAME_RE.search(ks):
+            if SECRET_FILE_RE.search(ks) or key_is_secret(ks):
                 out[ks] = REDACTED
             else:
                 out[ks] = _walk(v)
