@@ -14,14 +14,39 @@ client sharding, no launch->host mapping (VOL-12 §3); isolation rests on the
 per-launch workspace and the fencing in ``zloop.wave``, never on process
 count.
 
-Concurrency & Polling (P0-1 Fix):
+Honest v1 limitations (documented, not hidden):
+- ``wait()`` supports bounded timeout and interruption on timeout. On an SDK
+  error ``wait`` returns ``'unknown'`` — the caller treats the launch as
+  ambiguous (I44 discipline: provider status is never S authority, VOL-12 §5).
+- ``model`` is passed to ``thread_start`` only when set (spec.model wins
+  over the backend default).
+- ``agents_disabled`` is applied at client construction via
+  ``CodexConfig(config_overrides=("agents.enabled=false",
+  "features.multi_agent=false"))`` (VOL-12 §4 gate 1; verifying the actual
+  spawned tool catalog is an M8 probe).
+- ``spec.network`` / ``spec.max_turns`` / ``spec.env_extra`` are NOT
+  physically enforced by this backend yet: ``workspace_write`` implies
+  ``network_access=false`` by SDK default, but the double canary is an M8
+  probe (VOL-12 §4 gate 2).
+- Env: ``worker_env_vars()`` returns the D-5 legacy-hook neutralizer. The
+  SDK spawns its own runtime and merges any ``CodexConfig.env`` over a FULL
+  ``os.environ`` copy (openai_codex/client.py), so it cannot enforce the
+  VOL-17 §3 allowlist for that process; the env dict is applied where zloop
+  itself controls process creation (future) and today is returned for
+  callers/tests.
+
+Concurrency & Polling Semantics (P0-1 & P1-4):
 - ``start()`` registers the turn.
-- ``poll()`` provides non-blocking status checking; on first call it dispatches
-  ``handle.run()`` to an internal ThreadPoolExecutor (pool size 16 for 8–15 concurrency).
-- ``wait()`` supports bounded timeout and interruption on timeout.
+- ``poll()`` provides non-blocking status checking; on first call it lazily
+  dispatches ``handle.run()`` to an internal ThreadPoolExecutor (pool size 16
+  for 8–15 concurrency). Un-polled calls fallback to synchronous execution in ``wait()``.
+- 429/RateLimit backoff: ``_run_turn_with_retry`` intercepts rate-limit errors
+  and performs jittered exponential backoff (up to 3 retries) before declaring failure.
 """
 from __future__ import annotations
 
+import random
+import time
 from concurrent.futures import ThreadPoolExecutor, TimeoutError
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -92,15 +117,23 @@ class CodexLaunch:
 # ---------------------------------------------------------------------- backend
 
 
+def _is_rate_limit_error(exc: Exception) -> bool:
+    """Detect 429 / RateLimit errors across SDK exceptions and message strings."""
+    text = str(exc).lower()
+    return "429" in text or "rate limit" in text or "too many requests" in text
+
+
 class CodexSdkBackend:
     """AgentBackend over the Codex SDK with non-blocking execution (VOL-12 §2, D-12 v1)."""
 
-    def __init__(self, *, model: str | None = None, agents_disabled: bool = True, max_workers: int = 16):
+    def __init__(self, *, model: str | None = None, agents_disabled: bool = True,
+                 max_workers: int = 16, max_retries: int = 3):
         if not CODEX_SDK_AVAILABLE:
             raise BackendUnavailable(
                 f"{INSTALL_HINT} ({_IMPORT_ERROR!r})" if _IMPORT_ERROR else INSTALL_HINT)
         self._model = model
         self._agents_disabled = agents_disabled
+        self._max_retries = max_retries
         overrides = AGENTS_DISABLED_OVERRIDES if agents_disabled else ()
         # Default auth reuse: no explicit login_* call — the client picks up
         # the existing Codex CLI login (verified, VOL-02 §4).
@@ -129,17 +162,26 @@ class CodexSdkBackend:
         self._launches[spec.launch_id] = launch
         return launch
 
+    def _execute_turn_with_retry(self, launch: CodexLaunch) -> Any:
+        """Execute handle.run() with jittered exponential backoff on 429/RateLimit."""
+        for attempt in range(self._max_retries + 1):
+            try:
+                launch.result = launch.handle.run()
+                return launch.result
+            except Exception as e:
+                if _is_rate_limit_error(e) and attempt < self._max_retries:
+                    delay = 0.5 * (2 ** attempt) + random.uniform(0.1, 0.4)
+                    time.sleep(delay)
+                    continue
+                launch.error = f"{type(e).__name__}: {e}"
+                raise
+
     def _ensure_dispatched(self, launch: CodexLaunch) -> Any:
         """Ensure the turn execution is running in the background thread pool."""
         future = self._futures.get(launch.launch_id)
         if future is None and launch.result is None and launch.error is None:
             def _run():
-                try:
-                    launch.result = launch.handle.run()
-                    return launch.result
-                except Exception as e:
-                    launch.error = f"{type(e).__name__}: {e}"
-                    raise
+                return self._execute_turn_with_retry(launch)
             future = self._executor.submit(_run)
             self._futures[launch.launch_id] = future
         return future
@@ -176,9 +218,9 @@ class CodexSdkBackend:
             except Exception:
                 return "unknown"
 
-        # Direct synchronous invocation path (compatible with mock unit tests)
+        # Direct synchronous invocation path (compatible with unpolled callers & mock unit tests)
         try:
-            launch.result = launch.handle.run()
+            launch.result = self._execute_turn_with_retry(launch)
             return "terminal"
         except Exception as e:
             launch.error = f"{type(e).__name__}: {e}"

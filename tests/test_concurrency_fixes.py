@@ -51,10 +51,11 @@ def test_codex_sdk_backend_async_pool_and_poll():
     backend._futures = {}
     backend._launches = {}
     backend._model = None
+    backend._max_retries = 0
 
     # Create a mock handle that takes a short delay to run
     mock_handle = MagicMock()
-    mock_handle.run.side_effect = lambda: (time.sleep(0.1), "mock-result")[1]
+    mock_handle.run.side_effect = lambda: (time.sleep(0.3), "mock-result")[1]
 
     mock_thread = MagicMock()
     mock_thread.turn.return_value = mock_handle
@@ -64,7 +65,7 @@ def test_codex_sdk_backend_async_pool_and_poll():
     spec = WorkerSpec(launch_id="test-async-1", workspace=Path("."), prompt="hello")
     launch = backend.start(spec)
 
-    # First poll triggers async dispatch, return should be False initially
+    # First poll triggers async dispatch, return should be False while sleeping
     done_initially = backend.poll(launch)
     assert done_initially is False
 
@@ -73,6 +74,39 @@ def test_codex_sdk_backend_async_pool_and_poll():
     assert status == "terminal"
     assert backend.poll(launch) is True
     backend.close()
+
+
+def test_codex_sdk_rate_limit_backoff_retry():
+    """Test that 429 / RateLimit errors trigger backoff retry and succeed on subsequent attempt."""
+    backend = CodexSdkBackend.__new__(CodexSdkBackend)
+    backend._executor = None
+    backend._futures = {}
+    backend._launches = {}
+    backend._max_retries = 2
+    backend._model = None
+
+    attempts = 0
+    def mock_run():
+        nonlocal attempts
+        attempts += 1
+        if attempts == 1:
+            raise RuntimeError("Error 429: Too Many Requests / Rate limit exceeded")
+        return "success-after-retry"
+
+    mock_handle = MagicMock()
+    mock_handle.run.side_effect = mock_run
+    mock_thread = MagicMock()
+    mock_thread.turn.return_value = mock_handle
+    backend._client = MagicMock()
+    backend._client.thread_start.return_value = mock_thread
+
+    spec = WorkerSpec(launch_id="test-429-retry", workspace=Path("."), prompt="retry me")
+    launch = backend.start(spec)
+
+    res = backend.wait(launch)
+    assert res == "terminal"
+    assert attempts == 2
+    assert launch.result == "success-after-retry"
 
 
 def test_materialize_atomic_rollback_on_failure(store, canon, worktrees):
@@ -127,3 +161,26 @@ def test_create_worktree_parameter_validation(tmp_path):
     res = zw.create_worktree(tmp_path / "non_existent", tmp_path / "dest")
     assert res["ok"] is False
     assert "git_root does not exist" in res["reason"]
+
+
+def test_create_worktree_index_lock_contention_heals(tmp_path, monkeypatch):
+    """Test that git worktree add with index.lock contention heals via backoff retry."""
+    root = tmp_path / "fake_repo"
+    root.mkdir()
+    dest = tmp_path / "dest_ws"
+
+    attempts = 0
+    def fake_run(args, cwd):
+        nonlocal attempts
+        attempts += 1
+        if attempts <= 2:
+            return subprocess.CompletedProcess(
+                args=args, returncode=128,
+                stdout=b"", stderr=b"fatal: Unable to create '.git/index.lock': File exists."
+            )
+        return subprocess.CompletedProcess(args=args, returncode=0, stdout=b"", stderr=b"")
+
+    monkeypatch.setattr(zw, "_run", fake_run)
+    res = zw.create_worktree(root, dest, max_retries=4)
+    assert res["ok"] is True
+    assert attempts == 3  # failed twice on index.lock, third attempt succeeded
