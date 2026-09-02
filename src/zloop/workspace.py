@@ -14,8 +14,10 @@ write_scope, rejecting Git-admin paths outright (VOL-13 §4 Git-admin escape).
 from __future__ import annotations
 
 import posixpath
+import random
 import re
 import subprocess
+import time
 from pathlib import Path
 from typing import Optional
 
@@ -49,27 +51,45 @@ def _err(proc: subprocess.CompletedProcess, limit: int = 500) -> str:
 
 # ---- worktree_fast (NORMAL tier) -------------------------------------------
 
-def create_worktree(git_root: Path, dest: Path, base_ref: str = "HEAD") -> dict:
-    """`git worktree add --detach <dest> <base_ref>` from git_root."""
+def create_worktree(git_root: Path, dest: Path, base_ref: str = "HEAD", max_retries: int = 4) -> dict:
+    """`git worktree add --detach <dest> <base_ref>` from git_root.
+
+    Includes retry with jittered exponential backoff against .git/index.lock
+    contention under 8–15 concurrency (P1-1 Fix).
+    """
     git_root, dest = Path(git_root), Path(dest)
     if not git_root.is_dir():
         return {"ok": False, "path": str(dest), "reason": "git_root does not exist"}
     if not dest.parent.exists():
         return {"ok": False, "path": str(dest),
                 "reason": "dest parent does not exist"}
-    try:
-        proc = _run(["worktree", "add", "--detach", str(dest), base_ref],
-                    cwd=git_root)
-    except (OSError, subprocess.TimeoutExpired) as e:
-        return {"ok": False, "path": str(dest), "reason": repr(e)[:200]}
-    return {"ok": proc.returncode == 0, "path": str(dest),
-            "stderr_summary": _err(proc)}
+
+    last_proc = None
+    for attempt in range(max_retries):
+        try:
+            proc = _run(["worktree", "add", "--detach", str(dest), base_ref],
+                        cwd=git_root)
+            if proc.returncode == 0:
+                return {"ok": True, "path": str(dest), "stderr_summary": ""}
+            last_proc = proc
+            err = _err(proc)
+            if ("index.lock" in err or "already locked" in err) and attempt < max_retries - 1:
+                time.sleep(0.08 * (2 ** attempt) + random.uniform(0.02, 0.08))
+                continue
+            break
+        except (OSError, subprocess.TimeoutExpired) as e:
+            if attempt == max_retries - 1:
+                return {"ok": False, "path": str(dest), "reason": repr(e)[:200]}
+            time.sleep(0.1)
+
+    return {"ok": False, "path": str(dest),
+            "stderr_summary": _err(last_proc) if last_proc else "failed"}
 
 
-def remove_worktree(path: Path) -> dict:
+def remove_worktree(path: Path, max_retries: int = 3) -> dict:
     """`git worktree remove --force <path>` + `git worktree prune` in the
-    original (main) repo — you cannot remove the working tree you sit in,
-    so we resolve the shared common dir first."""
+    original (main) repo — with retry for Windows delayed handle release (P1-3 Fix).
+    """
     path = Path(path)
     try:
         probe = _run(["rev-parse", "--path-format=absolute", "--git-common-dir"],
@@ -82,15 +102,26 @@ def remove_worktree(path: Path) -> dict:
                 "reason": "not a git worktree",
                 "stderr_summary": _err(probe)}
     main_root = Path(probe.stdout.decode("utf-8", errors="replace").strip()).parent
-    try:
-        rm = _run(["worktree", "remove", "--force", str(path)], cwd=main_root)
-        prune = _run(["worktree", "prune"], cwd=main_root)
-    except (OSError, subprocess.TimeoutExpired) as e:
-        return {"ok": False, "removed": False, "pruned": False,
-                "reason": repr(e)[:200]}
-    return {"ok": rm.returncode == 0 and prune.returncode == 0,
-            "removed": rm.returncode == 0, "pruned": prune.returncode == 0,
-            "stderr_summary": _err(rm) or _err(prune)}
+
+    last_rm = None
+    last_prune = None
+    for attempt in range(max_retries):
+        try:
+            rm = _run(["worktree", "remove", "--force", str(path)], cwd=main_root)
+            prune = _run(["worktree", "prune"], cwd=main_root)
+            last_rm, last_prune = rm, prune
+            if rm.returncode == 0 and prune.returncode == 0:
+                return {"ok": True, "removed": True, "pruned": True, "stderr_summary": ""}
+            time.sleep(0.15 * (attempt + 1))
+        except (OSError, subprocess.TimeoutExpired) as e:
+            if attempt == max_retries - 1:
+                return {"ok": False, "removed": False, "pruned": False,
+                        "reason": repr(e)[:200]}
+            time.sleep(0.15)
+
+    return {"ok": False, "removed": last_rm.returncode == 0 if last_rm else False,
+            "pruned": last_prune.returncode == 0 if last_prune else False,
+            "stderr_summary": (_err(last_rm) if last_rm else "") or (_err(last_prune) if last_prune else "")}
 
 
 # ---- clone_strong (HIGH/CRITICAL tier) -------------------------------------

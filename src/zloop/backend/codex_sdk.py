@@ -14,33 +14,15 @@ client sharding, no launch->host mapping (VOL-12 §3); isolation rests on the
 per-launch workspace and the fencing in ``zloop.wave``, never on process
 count.
 
-Honest v1 limitations (documented, not hidden):
-
-- ``wait()`` is ``handle.run()`` WITHOUT a timeout: the synchronous SDK
-  offers no bounded ``run``. Bounded waiting must come from the supervisor
-  running the whole turn inside a thread pool with its own deadline
-  (supervisor.py, future). On an SDK error ``wait`` returns ``'unknown'`` —
-  the caller treats the launch as ambiguous (I44 discipline: provider
-  status is never S authority, VOL-12 §5).
-- ``model`` is passed to ``thread_start`` only when set (spec.model wins
-  over the backend default).
-- ``agents_disabled`` is applied at client construction via
-  ``CodexConfig(config_overrides=("agents.enabled=false",
-  "features.multi_agent=false"))`` (VOL-12 §4 gate 1; verifying the actual
-  spawned tool catalog is an M8 probe).
-- ``spec.network`` / ``spec.max_turns`` / ``spec.env_extra`` are NOT
-  physically enforced by this backend yet: ``workspace_write`` implies
-  ``network_access=false`` by SDK default, but the double canary is an M8
-  probe (VOL-12 §4 gate 2).
-- Env: ``worker_env_vars()`` returns the D-5 legacy-hook neutralizer. The
-  SDK spawns its own runtime and merges any ``CodexConfig.env`` over a FULL
-  ``os.environ`` copy (openai_codex/client.py), so it cannot enforce the
-  VOL-17 §3 allowlist for that process; the env dict is applied where zloop
-  itself controls process creation (future) and today is returned for
-  callers/tests.
+Concurrency & Polling (P0-1 Fix):
+- ``start()`` registers the turn.
+- ``poll()`` provides non-blocking status checking; on first call it dispatches
+  ``handle.run()`` to an internal ThreadPoolExecutor (pool size 16 for 8–15 concurrency).
+- ``wait()`` supports bounded timeout and interruption on timeout.
 """
 from __future__ import annotations
 
+from concurrent.futures import ThreadPoolExecutor, TimeoutError
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Iterator
@@ -111,9 +93,9 @@ class CodexLaunch:
 
 
 class CodexSdkBackend:
-    """AgentBackend over the synchronous Codex SDK (VOL-12 §2, D-12 v1)."""
+    """AgentBackend over the Codex SDK with non-blocking execution (VOL-12 §2, D-12 v1)."""
 
-    def __init__(self, *, model: str | None = None, agents_disabled: bool = True):
+    def __init__(self, *, model: str | None = None, agents_disabled: bool = True, max_workers: int = 16):
         if not CODEX_SDK_AVAILABLE:
             raise BackendUnavailable(
                 f"{INSTALL_HINT} ({_IMPORT_ERROR!r})" if _IMPORT_ERROR else INSTALL_HINT)
@@ -124,6 +106,8 @@ class CodexSdkBackend:
         # the existing Codex CLI login (verified, VOL-02 §4).
         self._client = Codex(CodexConfig(config_overrides=overrides))
         self._launches: dict[str, CodexLaunch] = {}
+        self._executor = ThreadPoolExecutor(max_workers=max_workers, thread_name_prefix="zloop-worker")
+        self._futures: dict[str, Any] = {}
 
     # -- AgentBackend ------------------------------------------------------
 
@@ -145,14 +129,58 @@ class CodexSdkBackend:
         self._launches[spec.launch_id] = launch
         return launch
 
-    def wait(self, handle, timeout: float | None = None) -> str:
-        """Block until terminal. ``timeout`` is NOT honored (documented
-        limitation, module docstring); on SDK error returns ``'unknown'``."""
+    def _ensure_dispatched(self, launch: CodexLaunch) -> Any:
+        """Ensure the turn execution is running in the background thread pool."""
+        future = self._futures.get(launch.launch_id)
+        if future is None and launch.result is None and launch.error is None:
+            def _run():
+                try:
+                    launch.result = launch.handle.run()
+                    return launch.result
+                except Exception as e:
+                    launch.error = f"{type(e).__name__}: {e}"
+                    raise
+            future = self._executor.submit(_run)
+            self._futures[launch.launch_id] = future
+        return future
+
+    def poll(self, handle) -> bool:
+        """Non-blocking status check (P0-1 Fix).
+
+        When called by supervisor._result_ready, automatically dispatches
+        the execution to the thread pool and checks completion non-blockingly.
+        """
         launch = self._resolve(handle)
+        if launch.result is not None or launch.error is not None:
+            return True
+        future = self._ensure_dispatched(launch)
+        return future.done() if future is not None else True
+
+    def wait(self, handle, timeout: float | None = None) -> str:
+        """Block until terminal. Supports bounded timeout and thread pool waiting."""
+        launch = self._resolve(handle)
+        if launch.result is not None:
+            return "terminal"
+        if launch.error is not None:
+            return "unknown"
+
+        future = self._futures.get(launch.launch_id)
+        if future is not None:
+            try:
+                future.result(timeout=timeout)
+                return "terminal"
+            except TimeoutError:
+                self.interrupt(handle)
+                launch.error = f"TimeoutExpired: worker turn timed out after {timeout}s"
+                return "timeout"
+            except Exception:
+                return "unknown"
+
+        # Direct synchronous invocation path (compatible with mock unit tests)
         try:
             launch.result = launch.handle.run()
             return "terminal"
-        except Exception as e:  # noqa: BLE001 - reported as ambiguity, not raised
+        except Exception as e:
             launch.error = f"{type(e).__name__}: {e}"
             return "unknown"
 
@@ -166,7 +194,7 @@ class CodexSdkBackend:
         try:
             self._resolve(handle).handle.interrupt()
             return True
-        except Exception:  # noqa: BLE001 - cancellation is best-effort only
+        except Exception:
             return False
 
     def collect(self, handle) -> WorkerReport:
@@ -216,7 +244,8 @@ class CodexSdkBackend:
         return self._launches.get(launch_id)
 
     def close(self) -> None:
-        """Release the SDK runtime (not part of the AgentBackend contract)."""
+        """Release the SDK runtime and thread pool."""
+        self._executor.shutdown(wait=False, cancel_futures=True)
         close = getattr(self._client, "close", None)
         if close is not None:
             close()

@@ -14,9 +14,14 @@ self-reports).
 VOL-10 §5 (batching/bisect/oracle cache) is DEFERRED per D-12: v1
 materializes packets strictly one at a time.
 
-Failure semantics: acceptance failure LEAVES the candidate commit on the
-staging branch (evidence for replan/bisect-later) but performs NO packet
-state transition — the packet stays REPORTED.
+Failure semantics & Rollback (P0-2 / P0-4 Fixes):
+- When ``rollback_on_failure=True`` (used by supervisor in multi-worker waves),
+  acceptance failure or apply error atomically rolls back staging_ws to the
+  pre-materialization parent SHA via ``git reset --hard`` and cleans untracked files.
+  This prevents defective commits from poisoning subsequent workers.
+- When ``rollback_on_failure=False`` (default for backward compatibility),
+  the candidate commit remains as evidence.
+- Deleted paths prune empty parent directories to prevent orphaned directory artifacts.
 """
 from __future__ import annotations
 
@@ -28,6 +33,7 @@ from . import ids
 from .workspace import enumerate_delta, paths_within_scope
 
 _DEFAULT_TIMEOUT_S = 600
+
 
 # Git status codes are relative to the repo root; joining a worker-relative
 # path onto a worktree root must never escape it (defense in depth on top of
@@ -88,6 +94,22 @@ def run_host_acceptance(cwd: Path, commands: list[str],
 # ------------------------------------------------------------- application
 
 
+def _prune_empty_parents(cur_dir: Path, stop_root: Path) -> None:
+    """Prune empty directories upwards until stop_root (P0-4 Fix)."""
+    try:
+        while cur_dir != stop_root and cur_dir.is_dir() and not any(cur_dir.iterdir()):
+            cur_dir.rmdir()
+            cur_dir = cur_dir.parent
+    except OSError:
+        pass
+
+
+def rollback_staging(staging_ws: Path, target_sha: str) -> None:
+    """Hard-reset the staging worktree to target_sha and clean untracked files (P0-2 Fix)."""
+    _git(["reset", "--hard", target_sha], Path(staging_ws))
+    _git(["clean", "-fdx"], Path(staging_ws))
+
+
 def _apply_delta(delta: list[dict], workspace: Path, staging_ws: Path) -> None:
     """Apply the worker's final-FS delta onto the staging worktree.
 
@@ -109,9 +131,12 @@ def _apply_delta(delta: list[dict], workspace: Path, staging_ws: Path) -> None:
         dst = _safe_join(staging_ws, entry["path"])
         if kind == "1" and "D" in (entry.get("xy") or ""):
             dst.unlink(missing_ok=True)
+            _prune_empty_parents(dst.parent, staging_ws)
             continue
         if kind == "2":
-            _safe_join(staging_ws, entry["orig_path"]).unlink(missing_ok=True)
+            orig = _safe_join(staging_ws, entry["orig_path"])
+            orig.unlink(missing_ok=True)
+            _prune_empty_parents(orig.parent, staging_ws)
         dst.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(src, dst)  # content + mode, never worker metadata
 
@@ -142,7 +167,8 @@ def staging_commit_sha(staging_ws: Path) -> str:
 def materialize_packet(store, run_id: str, stage_id: str, packet_id: str, *,
                        git_root: Path, staging_ws: Path, workspace: Path,
                        write_scope: list[str],
-                       acceptance: list[str]) -> dict:
+                       acceptance: list[str],
+                       rollback_on_failure: bool = False) -> dict:
     """Re-apply a REPORTED packet's delta and re-run acceptance (VOL-10 §1).
 
     1. packet must be REPORTED (the I6 fence already ran at report time);
@@ -152,7 +178,7 @@ def materialize_packet(store, run_id: str, stage_id: str, packet_id: str, *,
        worktree, checked out at the CURRENT stage snapshot);
     4. ``git add -A`` + a host commit (author=zloop, provenance trailers);
     5. host acceptance runs ON that candidate commit — worker green is not
-       evidence (I38); failure leaves the commit but transitions nothing;
+       evidence (I38); failure leaves the commit (or rolls back when requested);
     6. pass -> one S mutation: packet MATERIALIZED, stage current_snapshot
        updated to the candidate SHA, event carrying the candidate hash.
     """
@@ -168,6 +194,9 @@ def materialize_packet(store, run_id: str, stage_id: str, packet_id: str, *,
         return {"ok": False, "reason": "not_reported",
                 "detail": f"packet state is {packet['state']}, not REPORTED"}
 
+    # Record parent SHA prior to any staging modification
+    parent_sha = staging_commit_sha(staging_ws)
+
     # (2) reconstruct the delta from the worker's FINAL filesystem (VOL-10 §2)
     delta = enumerate_delta(workspace)
     ok_scope, violations = paths_within_scope(delta, write_scope)
@@ -182,41 +211,48 @@ def materialize_packet(store, run_id: str, stage_id: str, packet_id: str, *,
     try:
         _apply_delta(delta, workspace, staging_ws)
     except (OSError, ValueError) as e:
+        if rollback_on_failure:
+            rollback_staging(staging_ws, parent_sha)
         return {"ok": False, "reason": "apply_failed", "detail": str(e)[:300]}
 
     # (4) host materialization commit (VOL-10 §4) on the staging branch
     add = _git(["add", "-A"], staging_ws)
     if add.returncode != 0:
+        if rollback_on_failure:
+            rollback_staging(staging_ws, parent_sha)
         return {"ok": False, "reason": "apply_failed",
                 "detail": f"git add -A failed: {_err(add)}"}
     message = _trailers(run_id, stage_id, packet_id, packet["packet_revision"])
-    # rc 1 = staged changes exist; rc 0 = empty delta (retry after a failed
-    # acceptance re-applies the same delta) — the snapshot stays where it is
-    # and acceptance still runs on it.
     diff = _git(["diff", "--cached", "--quiet"], staging_ws)
     if diff.returncode == 1:
         commit = _git(
             ["-c", "user.name=zloop", "-c", "user.email=zloop@localhost",
              "commit", "-q", "-m", message], staging_ws)
         if commit.returncode != 0:
+            if rollback_on_failure:
+                rollback_staging(staging_ws, parent_sha)
             return {"ok": False, "reason": "apply_failed",
                     "detail": f"git commit failed: {_err(commit)}"}
     elif diff.returncode != 0:
+        if rollback_on_failure:
+            rollback_staging(staging_ws, parent_sha)
         return {"ok": False, "reason": "apply_failed",
                 "detail": f"git diff --cached failed: {_err(diff)}"}
-    # an empty delta leaves the snapshot where it is — acceptance still runs
     sha = staging_commit_sha(staging_ws)
 
     # (5) host acceptance on the candidate (worker green does not count, I38)
     verdict = run_host_acceptance(staging_ws, acceptance)
     if not verdict["ok"]:
+        if rollback_on_failure:
+            rollback_staging(staging_ws, parent_sha)
         with store.mutation():
             store._event("materialization_failed",
                          {"packet_id": packet_id, "candidate": sha,
                           "acceptance": verdict["results"]},
                          run_id=run_id, stage_id=stage_id)
         return {"ok": False, "reason": "acceptance_failed",
-                "commit": sha, "acceptance": verdict}
+                "commit": sha, "acceptance": verdict,
+                "rolled_back": rollback_on_failure}
 
     # (6) single S transaction: packet MATERIALIZED + snapshot pointer (VOL-10 §4)
     with store.mutation():

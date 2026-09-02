@@ -157,14 +157,14 @@ def connect(project_dir: Path, *, create: bool = False) -> sqlite3.Connection:
     if not db_path.exists() and not create:
         raise SError(f"control DB missing: {db_path}")
     db_path.parent.mkdir(parents=True, exist_ok=True)
-    conn = sqlite3.connect(str(db_path), timeout=5.0, isolation_level=None)
+    conn = sqlite3.connect(str(db_path), timeout=30.0, isolation_level=None)
     conn.row_factory = sqlite3.Row
     prof = journal_profile()
     try:
         conn.execute(f"PRAGMA journal_mode={prof['journal_mode']}")
         conn.execute(f"PRAGMA synchronous={prof['synchronous']}")
         conn.execute("PRAGMA foreign_keys=ON")
-        conn.execute("PRAGMA busy_timeout=5000")
+        conn.execute("PRAGMA busy_timeout=30000")
         row = conn.execute("PRAGMA quick_check").fetchone()
         if not row or str(row[0]).lower() != "ok":
             conn.close()

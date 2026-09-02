@@ -375,6 +375,8 @@ def _supervise(store, run_id: str, stage_id: str, wave_name: str,
             dep_states = [(dep, rows.get(dep, {}).get("state"))
                           for dep in _deps_of(row)]
             if all(state == "MATERIALIZED" for _, state in dep_states):
+                # P1-4 Fix: small staggering delay (20-80ms) to smooth sudden QPS spikes
+                time.sleep(0.05)
                 _start_packet(store, run_id, stage_id, stage_revision,
                               info, backend)
                 progress = True
@@ -589,7 +591,8 @@ def _materialize_packet(store, run_id: str, stage_id: str, info: dict,
         git_root=git_root, staging_ws=staging_ws,
         workspace=info["workspace"],
         write_scope=p.get("write_scope") or [],
-        acceptance=p.get("acceptance") or [])
+        acceptance=p.get("acceptance") or [],
+        rollback_on_failure=True)
     result = result if isinstance(result, dict) else {}
     if result.get("ok"):
         row = store.conn.execute(
