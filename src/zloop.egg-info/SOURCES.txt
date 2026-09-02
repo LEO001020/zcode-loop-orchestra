@@ -1,0 +1,14 @@
+pyproject.toml
+src/zloop/__init__.py
+src/zloop/db.py
+src/zloop/evidence.py
+src/zloop/ids.py
+src/zloop/paths.py
+src/zloop/redact.py
+src/zloop.egg-info/PKG-INFO
+src/zloop.egg-info/SOURCES.txt
+src/zloop.egg-info/dependency_links.txt
+src/zloop.egg-info/entry_points.txt
+src/zloop.egg-info/requires.txt
+src/zloop.egg-info/top_level.txt
+tests/test_foundation.py
