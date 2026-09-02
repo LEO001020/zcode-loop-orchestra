@@ -834,8 +834,13 @@ def _run_mock_wave(git_repo, data_root, tmp_path, *, objective, risk=None,
     f = _write_packets(tmp_path, packets)
     r = run_cli("wave", "propose", str(f), cwd=git_repo, data_root=data_root)
     assert r.returncode == 0, r.stderr
-    r = run_cli("wave", "start", "W1", "--backend", "mock",
-                cwd=git_repo, data_root=data_root)
+    start_args = ["wave", "start", "W1", "--backend", "mock"]
+    if (risk or "NORMAL") in ("HIGH", "CRITICAL"):
+        # D-25: HIGH/CRITICAL dispatch now requires a plan-role C2C (or an
+        # audited waiver); this fixture waives explicitly so existing
+        # HIGH-risk promote tests keep exercising their own paths.
+        start_args.append("--skip-c2c")
+    r = run_cli(*start_args, cwd=git_repo, data_root=data_root)
     assert r.returncode == 0, r.stderr
     summary = json.loads(r.stdout)
     assert summary["ok"] is True, summary

@@ -30,7 +30,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Optional
 
-from . import __version__, db, ids, paths, stage, wave, workspace
+from . import __version__, c2c, db, ids, paths, stage, wave, workspace
 
 EXIT_OK = 0
 EXIT_USAGE = 2
@@ -649,6 +649,24 @@ _PROMOTE_PACKET_TERMINAL = ("MATERIALIZED", "FAILED", "BLOCKED", "CANCELLED")
 _C2C_GATE_RISK = ("HIGH", "CRITICAL")
 
 
+def _c2c_recorded_roles(store, rid: str, sid: str) -> set:
+    """Roles of the c2c_recorded events for this run+stage (D-25). The role
+    lives in the event detail_json; corrupt details are skipped (fail-closed
+    means 'does not count', never 'crashes the gate')."""
+    roles = set()
+    for r in store.conn.execute(
+            "SELECT detail_json FROM events WHERE kind='c2c_recorded'"
+            " AND run_id=? AND stage_id=?", (rid, sid)):
+        try:
+            d = json.loads(r["detail_json"])
+        except Exception:
+            continue
+        role = d.get("role")
+        if isinstance(role, str):
+            roles.add(role)
+    return roles
+
+
 def _stage_promote(args: argparse.Namespace, pid: str, pdir: Path) -> int:
     """Promote a fully-materialized stage onto the canonical branch (M8,
     VOL-11 §2). Narrow command semantics — no PromotionManager:
@@ -717,16 +735,13 @@ def _stage_promote(args: argparse.Namespace, pid: str, pdir: Path) -> int:
             # (3) HIGH/CRITICAL risk gate: a recorded C2C result for this
             # run+stage (VOL-16 §6), waived only by an audited --skip-c2c
             if st["risk_effective"] in _C2C_GATE_RISK:
-                recorded = store.conn.execute(
-                    "SELECT COUNT(*) FROM events WHERE kind='c2c_recorded'"
-                    " AND run_id=? AND stage_id=?", (rid, sid)).fetchone()[0]
-                if not recorded:
+                if "result" not in _c2c_recorded_roles(store, rid, sid):
                     if not args.skip_c2c:
                         raise CliError(
                             EXIT_BLOCKED,
                             f"stage promote blocked: c2c_gate_required — "
-                            f"{sid} is {st['risk_effective']} risk and no C2C "
-                            f"result is recorded for {rid}/{sid}; record the "
+                            f"{sid} is {st['risk_effective']} risk and no result-role C2C "
+                            f"is recorded for {rid}/{sid}; record the "
                             f"external auditor's response first, or pass "
                             f"--skip-c2c to waive the gate explicitly")
                     with store.mutation():
@@ -867,6 +882,87 @@ def _load_packets_file(path: Path) -> list:
         raise CliError(EXIT_USAGE, f"packets file {path} must be a JSON object "
                                    f'{{"packets": [...]}} (VOL-04 §8 schema)')
     return packets
+
+
+# ---- C2C packets (VOL-16 §1, D-25) -----------------------------------------
+
+def _read_text_arg(path: str) -> str:
+    """Read the packet/response text from a file, or stdin for '-'."""
+    if path == "-":
+        return sys.stdin.read()
+    p = Path(path)
+    if not p.is_file():
+        raise CliError(EXIT_USAGE, f"file not found: {path}")
+    return p.read_text(encoding="utf-8")
+
+
+def _c2c_prepare(args: argparse.Namespace, pid: str, pdir: Path) -> int:
+    content = _read_text_arg(args.file)
+    if not content.strip():
+        raise CliError(EXIT_USAGE, "c2c packet content is empty")
+    conn = db.connect(pdir, create=True)
+    try:
+        store = db.ControlStore(pdir, conn, project_id=pid)
+        with db.RunLock(pdir):
+            run = _require_active_run(store)
+            st = _open_stage(store, run["run_id"])
+            packet = c2c.prepare_c2c(pdir, store, run["run_id"], st["stage_id"],
+                                     args.role, content=content,
+                                     data_class=args.data_class,
+                                     risk_effective=st["risk_effective"])
+        out = {k: packet[k] for k in ("c2c_id", "role", "stage_id", "run_id",
+                                      "risk_effective", "data_class",
+                                      "fresh_thread_required",
+                                      "thread_policy_note", "created_at")
+               if k in packet}
+        out["packet_path"] = str(pdir / "c2c" / f"{packet['c2c_id']}.json")
+        out["content_chars"] = len(packet.get("content") or "")
+        print(json.dumps(out, ensure_ascii=False, indent=2))
+        return EXIT_OK
+    finally:
+        conn.close()
+
+
+def _c2c_record(args: argparse.Namespace, pid: str, pdir: Path) -> int:
+    response = _read_text_arg(args.file)
+    if not response.strip():
+        raise CliError(EXIT_USAGE, "c2c response text is empty")
+    ident: dict = {}
+    for kv in args.identity:
+        if "=" not in kv:
+            raise CliError(EXIT_USAGE, f"--identity expects key=value, got {kv!r}")
+        k, v = kv.split("=", 1)
+        ident[k.strip()] = v.strip()
+    conn = db.connect(pdir, create=True)
+    try:
+        store = db.ControlStore(pdir, conn, project_id=pid)
+        result = c2c.record_c2c(pdir, store, args.c2c, response,
+                               observed_identity=ident or None)
+        if not result.get("ok"):
+            raise CliError(EXIT_BLOCKED,
+                           f"c2c record failed: {result.get('reason')}")
+        summary = result.get("packet_summary") or {}
+        out = {"c2c_id": result["c2c_id"],
+               "role": summary.get("role"),
+               "audit_coverage": result["audit_coverage"],
+               "trust": result["trust"],
+               "response_digest": result["response_digest"],
+               "observed_identity": result["observed_identity"],
+               "recorded_at": result["recorded_at"],
+               "result_path": str(pdir / "c2c" / f"{result['c2c_id']}-result.json")}
+        # full response lives in the store (blob CAS) — the CLI emits only the
+        # bounded digest (VOL-16 §5, P1-11)
+        print(json.dumps(out, ensure_ascii=False, indent=2))
+        return EXIT_OK
+    finally:
+        conn.close()
+
+
+def cmd_c2c(args: argparse.Namespace) -> int:
+    pid, pdir = _require_project()
+    if args.cmd == "prepare":
+        return _c2c_prepare(args, pid, pdir)
+    return _c2c_record(args, pid, pdir)
 
 
 def cmd_wave(args: argparse.Namespace) -> int:
@@ -1092,6 +1188,30 @@ def _wave_start(args: argparse.Namespace, pid: str, pdir: Path) -> int:
             rid, sid = run["run_id"], st["stage_id"]
             wave_detail = _find_wave(store, rid, sid, wid)
             pending = _pending_wave_packets(store, rid, sid, wid, wave_detail)
+            # D-25 plan gate (VOL-16 §6, user directive): HIGH/CRITICAL
+            # dispatch requires a recorded plan-role C2C — the external
+            # auditor's verdict on the PLAN, before workers are launched.
+            # Blocked here, the stage stays PLANNING (nothing dispatched).
+            if st["risk_effective"] in _C2C_GATE_RISK:
+                if "plan" not in _c2c_recorded_roles(store, rid, sid):
+                    if not args.skip_c2c:
+                        raise CliError(
+                            EXIT_BLOCKED,
+                            f"wave start blocked: c2c_plan_gate_required — "
+                            f"{sid} is {st['risk_effective']} risk and no "
+                            f"plan-role C2C is recorded for {rid}/{sid}; "
+                            f"prepare a plan packet (zloop c2c prepare "
+                            f"--role plan), send it to the external auditor, "
+                            f"record the response (zloop c2c record), or "
+                            f"pass --skip-c2c to waive the gate explicitly")
+                    with store.mutation():
+                        store._event("c2c_waiver",
+                                     {"flag": "--skip-c2c",
+                                      "gate": "wave_start_plan",
+                                      "risk_effective": st["risk_effective"],
+                                      "note": "HIGH/CRITICAL plan C2C gate "
+                                              "waived by operator flag"},
+                                     run_id=rid, stage_id=sid)
             if st["state"] == "PLANNING":
                 try:
                     st = stage.transition_stage(store, rid, sid, "EXECUTING")
@@ -1387,6 +1507,26 @@ def build_parser() -> argparse.ArgumentParser:
                          "(audited as a c2c_waiver event)")
     sp.set_defaults(func=cmd_stage)
 
+    sp = sub.add_parser("c2c", help="cross-model C2C packets (VOL-16, D-25)")
+    c2sub = sp.add_subparsers(dest="cmd", required=True)
+    sp = c2sub.add_parser("prepare", help="prepare a bounded, redacted packet "
+                                         "for the external auditor (role plan|result)")
+    sp.add_argument("--role", required=True, choices=["plan", "result"])
+    sp.add_argument("--file", default="-", metavar="PATH",
+                    help="packet content file ('-' = stdin, default)")
+    sp.add_argument("--data-class", default="project_internal",
+                    choices=["public", "project_internal", "sensitive"])
+    sp.set_defaults(func=cmd_c2c)
+    sp = c2sub.add_parser("record", help="record the external auditor's response "
+                                        "for a prepared packet (verifies packet sha)")
+    sp.add_argument("--c2c", required=True, metavar="ID")
+    sp.add_argument("--file", default="-", metavar="PATH",
+                    help="response text file ('-' = stdin, default)")
+    sp.add_argument("--identity", action="append", default=[], metavar="KEY=VALUE",
+                    help="observable identity (repeatable): surface=... "
+                         "ui_model_label=... search_mode=... thread_id_hint=...")
+    sp.set_defaults(func=cmd_c2c)
+
     sp = sub.add_parser("wave", help="wave propose/start/cancel (VOL-09)")
     wsub = sp.add_subparsers(dest="cmd", required=True)
     sp = wsub.add_parser("propose", help="validate packets.json and insert PENDING "
@@ -1398,6 +1538,9 @@ def build_parser() -> argparse.ArgumentParser:
     sp.add_argument("wave", metavar="Wn")
     sp.add_argument("--backend", default="mock", metavar="NAME",
                     help="worker backend (v1: mock; codex pending auth)")
+    sp.add_argument("--skip-c2c", action="store_true",
+                    help="waive the HIGH/CRITICAL plan C2C gate "
+                         "(audited as a c2c_waiver event)")
     sp.set_defaults(func=cmd_wave)
     sp = wsub.add_parser("cancel", help="request cancellation of the ACTIVE run's "
                                         "wave (owner executes CANCELLING on its "
