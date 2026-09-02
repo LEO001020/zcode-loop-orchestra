@@ -27,3 +27,12 @@ PYTHONPATH=src python -m pytest
 - **未经用户确认绝不删除** `C:\ProgramData\OpenAI\Codex\requirements.toml` 等 ProgramData 文件（存活中的旧 LOOP 机器级 hook 注册；已于 2026-09-02 备份到 `~/.zloop/hygiene-backup/`）。
 - **测试绝不触碰真实 `~/.zloop`**：一律使用临时目录/隔离数据根。
 - 其余硬禁令见 VOL-01 §3（不逆向 `zcode.cjs`/asar 内部接口；不用 Stop hook 做无限 continuation——平台上限 3 次；不自动 stash/reset/clean/commit 用户 canonical 未提交修改；live/不可逆动作永远显式人类授权）。
+
+
+## Live vendor-test budget (D-15, 2026-09-02)
+
+User quota is a real cost. Hard rules:
+- Probe agents touching a live vendor (Kimi/Codex/etc.): **max 2 real turns per probe**, one-word prompts, no reruns without recording why.
+- Implementation agents: stubs/fakes only; **live verification is a separate, explicitly budgeted step** (also max 2 turns).
+- A 403/429 means STOP, never retry-loop.
+- Every live turn must be countable in the vendor's local log afterward (audit obligation).
