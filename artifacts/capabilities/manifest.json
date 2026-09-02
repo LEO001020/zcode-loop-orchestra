@@ -3,7 +3,7 @@
   "description": "Machine-readable probe status registry for ZLoop M0 (VOL-20 probe catalog). Human-readable companion: docs/VENDOR_CONTRACTS.md. Spec basis: E:\\zcode\\zloop-spec (VOL-02, VOL-20, DECISIONS.md).",
   "generated_at": "2026-09-02",
   "spec_library": "E:\\zcode\\zloop-spec",
-  "milestone": "M0 (Archaeology + Capability Truth) in progress",
+  "milestone": "M0 substantially complete (go/no-go set closed); second independent audit (razor) executed a deletion pass (D-7..D-12); M1 hook install executed 2026-09-02 with 5 post-execution events (D-9)",
   "m0_exit_criteria_ref": "E:\\zcode\\zloop-spec\\VOL-20-M0-PROBES.md#6 (six items, not yet all met)",
   "status_legend": {
     "PASS": "probe executed and passed",
@@ -55,7 +55,10 @@
       "headless_cli_found": false,
       "note": "only ZCode.exe (Electron) + rg/ugrep tools; no standalone headless CLI binary"
     },
-    "disk_free_gb": { "C": 133.5, "E": 184.1 },
+    "disk_free_gb": {
+      "C": 133.5,
+      "E": 184.1
+    },
     "codex_auth": {
       "status": "BROKEN",
       "evidence": "codex login status -> rc=1, 'Error checking login status: invalid ID token format at line 1 column 74'",
@@ -73,7 +76,9 @@
       "question": "Environment / legacy-project archaeology snapshot (VOL-20 section 1)",
       "status": "PASS",
       "executed_at": "2026-09-02T11:30:01.743519+00:00",
-      "evidence_refs": ["artifacts/capabilities/phase-1.json"],
+      "evidence_refs": [
+        "artifacts/capabilities/phase-1.json"
+      ],
       "fallback_triggered": null,
       "notes": "Full environment, ~/.codex / ~/.kimi / zcode home inventory, old-loop tree E:\\codex-LOOP read-only census, deliveries listing. Environment snapshot copied into this manifest."
     },
@@ -82,52 +87,64 @@
       "question": "Old LOOP machine-level hook registration in C:\\ProgramData\\OpenAI\\Codex\\requirements.toml still firing on Codex processes? (P0-3)",
       "status": "PARTIAL",
       "executed_at": "2026-09-02",
-      "evidence_refs": ["artifacts/capabilities/phase-1.json#legacy.programdata_requirements"],
+      "evidence_refs": [
+        "artifacts/capabilities/phase-1.json#legacy.programdata_requirements"
+      ],
       "fallback_triggered": null,
       "notes": "Inspected + backed up to ~/.zloop/hygiene-backup/ (size 4571, sha256 6c0f4f7b461ccc2bdf57725d0e65478062dfdc8a0755dc59c7d8815f63af8de4). Removal is PENDING USER CONFIRMATION (never delete ProgramData files without it). Post-removal verification (clean Codex headless turn, temp cwd) not yet run. Mitigation documented: set CODEX_LOOP_REQUIREMENTS_TOML env to an empty requirements file to bypass legacy managed hooks for Codex workers; alternative fallback = isolated CODEX_HOME (VOL-20 P-HYG1). See docs/OPERATIONS.md section 6."
     },
     {
       "probe_id": "P-SQL1",
       "question": "SQLite version gate: local 3.50.4 is inside the WAL-reset affected range (P0-1) - which fix path?",
-      "status": "RUNNING",
-      "executed_at": "2026-09-02",
-      "evidence_refs": [],
-      "fallback_triggered": null,
-      "notes": "Executed by a parallel agent; result pending. Interim decision D-1 applies: DELETE+EXTRA journaling until the version gate passes; no production WAL (I22)."
+      "status": "DEGRADED",
+      "executed_at": "2026-09-02T13:00:00Z",
+      "evidence_refs": [
+        "artifacts/probes/P-SQL1.json"
+      ],
+      "fallback_triggered": "pysqlite3 0.6.0 installs (cp314 wheel) but ships sqlite 3.51.1 - still inside the affected range; journal stays DELETE+EXTRA (D-1 path c / D-7)",
+      "notes": "s1 PASS (gate readback DELETE+EXTRA); s2 DEGRADED (see fallback); s3 PASS crash-atomicity (uncommitted rows absent, quick_check ok after hard kill); s4 PASS (8 random kills + deterministic kill at 192/200, claims==events invariant held); s5 PASS (2 children x 30 = 60 claims, no corruption); s6 PASS (UNC fails closed)."
     },
     {
       "probe_id": "P-SQL2",
       "question": "Authority placement: hook / Terminal / zloop CLI / supervisor all on one host path namespace (no WSL/Remote crossing)?",
-      "status": "RUNNING",
-      "executed_at": "2026-09-02",
-      "evidence_refs": [],
+      "status": "PASS",
+      "executed_at": "2026-09-02T13:00:00Z",
+      "evidence_refs": [
+        "artifacts/probes/P-SQL2.json"
+      ],
       "fallback_triggered": null,
-      "notes": "Executed by a parallel agent; result pending."
+      "notes": "Single authority host YES (python<-bash<-ZCode.exe chain on DESKTOP-3L9C649); net use/subst empty; home on local disk. Standing risk: future ZCode Remote/WSL would split hook vs supervisor hosts -> VOL-07 section 2."
     },
     {
       "probe_id": "P-WS1",
       "question": "worktree_fast vs clone_strong: latency, common-ref tamper rejection, credential invisibility, host-delta reconstruction",
-      "status": "RUNNING",
-      "executed_at": "2026-09-02",
-      "evidence_refs": [],
+      "status": "PASS",
+      "executed_at": "2026-09-02T11:50:54Z",
+      "evidence_refs": [
+        "artifacts/probes/P-WS1.json"
+      ],
       "fallback_triggered": null,
-      "notes": "Executed by a parallel agent; result pending."
+      "notes": "worktree_fast git-admin isolation FALSE (update-ref from inside worktree reached canonical refs; 130ms create). clone_strong isolates fully (353ms). Policy: HIGH/CRITICAL -> clone_strong; worktree_fast only with sandbox proof. Both backends implemented+tested."
     },
     {
       "probe_id": "P-KIM1",
       "question": "Kimi dual lane: K1 web server API; K2 headless stream-json incl. #1897 reproduction on local 0.28.1",
-      "status": "RUNNING",
-      "executed_at": "2026-09-02",
-      "evidence_refs": [],
-      "fallback_triggered": null,
-      "notes": "Executed by a parallel agent; result pending."
+      "status": "DEGRADED",
+      "executed_at": "2026-09-02T14:30:00Z",
+      "evidence_refs": [
+        "artifacts/probes/P-KIM1.json"
+      ],
+      "fallback_triggered": "K2 final recorded run hit provider quota (rc=1, empty stdout, 403 provider.api_error); three earlier same-day runs completed with correct terminal assistant",
+      "notes": "K1 server full-chain PASS (healthz; openapi 63 paths sha256 12d0a5e2; metadata.cwd session; last_turn_reason=completed; messages recovery; :abort code 0). Contract findings: token persisted at ~/.kimi-code/server.token and shared across instances; port drift 58627->58628; agent_config.model silently dropped at create (must use profile endpoint); HTTP 200 can carry code!=0. K2: last stream-json line is meta:session.resume_hint, not the assistant message -> judge must skip trailing meta lines (I27 refinement). K1/K2 share the same account quota -> no mutual backup value. D-10: single-lane K1."
     },
     {
       "probe_id": "P-CDX1",
       "question": "openai-codex SDK contract: thread_start/list/read/resume, turn/stream termination, crash/reconnect, bounded stale-active",
       "status": "BLOCKED-manual",
       "executed_at": "2026-09-02",
-      "evidence_refs": ["artifacts/capabilities/phase-1.json#commands"],
+      "evidence_refs": [
+        "artifacts/capabilities/phase-1.json#commands"
+      ],
       "fallback_triggered": "codex auth invalid -> BLOCKED-manual",
       "notes": "Blocked: codex login status -> 'invalid ID token format' (rc=1). User re-login required before any live Codex probe."
     },
@@ -136,7 +153,9 @@
       "question": "Strict worker dual hard gates: [agents].enabled=false removes spawn_agent family from tool catalog; network canaries (public + loopback/private) rejected",
       "status": "BLOCKED-manual",
       "executed_at": "2026-09-02",
-      "evidence_refs": ["artifacts/capabilities/phase-1.json#commands"],
+      "evidence_refs": [
+        "artifacts/capabilities/phase-1.json#commands"
+      ],
       "fallback_triggered": "codex auth invalid -> BLOCKED-manual",
       "notes": "Blocked: codex auth invalid (see P-CDX1)."
     },
@@ -145,7 +164,9 @@
       "question": "Known-failure reproducibility on 0.147.0: issues #37047 (stale-active resume), #34220 (app-server restart child state), #37856 (multi-window ownership)",
       "status": "BLOCKED-manual",
       "executed_at": "2026-09-02",
-      "evidence_refs": ["artifacts/capabilities/phase-1.json#commands"],
+      "evidence_refs": [
+        "artifacts/capabilities/phase-1.json#commands"
+      ],
       "fallback_triggered": "codex auth invalid -> BLOCKED-manual",
       "notes": "Blocked: codex auth invalid (see P-CDX1)."
     },
@@ -154,7 +175,9 @@
       "question": "Luna entitlement canary: real webSearch tool/event + source URL => AVAILABLE; else UNAVAILABLE/OBSERVED_DIFFERENT",
       "status": "BLOCKED-manual",
       "executed_at": "2026-09-02",
-      "evidence_refs": ["artifacts/capabilities/phase-1.json#commands"],
+      "evidence_refs": [
+        "artifacts/capabilities/phase-1.json#commands"
+      ],
       "fallback_triggered": "codex auth invalid -> BLOCKED-manual",
       "notes": "Blocked: codex auth invalid (see P-CDX1)."
     },
@@ -268,13 +291,69 @@
       "date": "2026-09-02",
       "source": "E:\\zcode\\zloop-spec\\DECISIONS.md",
       "summary": "Four phantom/misplaced Gen-8 items (vector DB, Blackboard dump, Compatibility Gateway, IPybox-as-memory-authority) are excluded; VOL-02 section 7 is the ground truth for the KEEP/DROP table. Old tree has no prev_event_hash chain."
+    },
+    {
+      "id": "D-5",
+      "title": "Legacy worker isolation via CODEX_LOOP_REQUIREMENTS_TOML",
+      "date": "2026-09-02",
+      "source": "spec DECISIONS.md",
+      "summary": "Workers carry an empty requirements override instead of deleting ProgramData (removal still needs user confirmation)."
+    },
+    {
+      "id": "D-6",
+      "title": "Codex auth broken -> backend probes BLOCKED-manual",
+      "date": "2026-09-02",
+      "source": "spec DECISIONS.md",
+      "summary": "codex login status: invalid ID token format; user re-login required for P-CDX1/2/3 and P-LUNA1."
+    },
+    {
+      "id": "D-7",
+      "title": "pysqlite3 0.6.0 ships sqlite 3.51.1 (still affected)",
+      "date": "2026-09-02",
+      "source": "P-SQL1 s2",
+      "summary": "Journal stays DELETE+EXTRA; future upgrade path = bundled sqlite.org DLL."
+    },
+    {
+      "id": "D-8",
+      "title": "Controller ownership = S CAS token; cancel writes cancel_requested",
+      "date": "2026-09-02",
+      "source": "razor audit P0 fix",
+      "summary": "No long-held OS lock (old design deadlocked cancel against the wave lock); takeover requires (pid,pid_start_time) death proof."
+    },
+    {
+      "id": "D-9",
+      "title": "Hook registration 7->5 (drop PreToolUse/PermissionRequest)",
+      "date": "2026-09-02",
+      "source": "razor audit",
+      "summary": "Hot-path process tax before every tool call; PostToolUse(+Failure) already carries full structured results. Code changed, 105 tests green."
+    },
+    {
+      "id": "D-10",
+      "title": "Kimi single lane: K1 server only",
+      "date": "2026-09-02",
+      "source": "P-KIM1",
+      "summary": "K1 full-chain PASS with messages recovery mitigating #1897; K1/K2 share account quota so dual lane has no backup value."
+    },
+    {
+      "id": "D-11",
+      "title": "C2C P/A fresh threads: mandatory only for HIGH/CRITICAL",
+      "date": "2026-09-02",
+      "source": "razor audit",
+      "summary": "NORMAL thread policy becomes an A/B variable (C_same vs C_fresh)."
+    },
+    {
+      "id": "D-12",
+      "title": "Razor deletions for v1",
+      "date": "2026-09-02",
+      "source": "razor audit + probes",
+      "summary": "Deleted: worker-host-per-launch, client sharding, controller_epochs-as-ownership, persisted H1.machine. Deferred: batch/bisect/oracle-cache, per-launch Job Objects, AppServerBackend. Derived: attempt ordinal from launches."
     }
   ],
   "next_actions": [
-    "User: re-login Codex (`codex login`) to clear the 'invalid ID token format' error, then run P-CDX1 / P-CDX2 / P-CDX3 / P-LUNA1 (currently BLOCKED-manual).",
-    "Open a NEW ZCode session (after `zloop install`) and run P-HK1 / P-HK2 / P-HK3 / P-HK4 / P-BIND1 / P-GC1 / P-PLAT1 (currently BLOCKED-requires-new-session); follow the first-session checklist in docs/OPERATIONS.md section 7.",
-    "Collect results from the parallel agents running P-SQL1 / P-SQL2 / P-WS1 / P-KIM1 and update this manifest plus docs/VENDOR_CONTRACTS.md.",
-    "Collect the 8 dispatched P-NAT1 subagent observations recorded by the root agent; complete the N=2..30 fg/bg ladder and CLAUDE_CODE_MAX_* knob tests.",
-    "Ask the user to confirm removal of C:\\ProgramData\\OpenAI\\Codex\\requirements.toml (backed up 2026-09-02, sha256 6c0f4f7b...); meanwhile apply the CODEX_LOOP_REQUIREMENTS_TOML empty-requirements mitigation for Codex workers; re-verify with a clean Codex headless turn after removal."
+    "User: re-login Codex (`codex login`) to unlock P-CDX1/P-CDX2/P-CDX3/P-LUNA1.",
+    "User: open a NEW ZCode session (hooks now installed, 5 events) and run the first-session checklist in docs/OPERATIONS.md section 7; that session also unlocks P-HK1/HK2/HK3/HK4/P-BIND1/P-GC1/P-PLAT1.",
+    "User: confirm removal of C:\\ProgramData\\OpenAI\\Codex\requirements.toml (backed up; sha256 6c0f4f7b...).",
+    "Dev: apply D-8 controller-token redesign in code when the supervisor is built (M6); drop the attempts table in v1.1.",
+    "Dev: profile T_host_acceptance/T_trusted before considering VOL-10 section 5 batching."
   ]
 }
