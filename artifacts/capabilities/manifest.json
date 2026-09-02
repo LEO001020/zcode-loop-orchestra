@@ -60,9 +60,9 @@
       "E": 184.1
     },
     "codex_auth": {
-      "status": "BROKEN",
-      "evidence": "codex login status -> rc=1, 'Error checking login status: invalid ID token format at line 1 column 74'",
-      "remedy": "user must re-run codex login"
+      "status": "WORKING via opencodex/cliproxy route (SDK live-verified 2026-09-02: thread->turn->completed->final_response)",
+      "chatgpt_membership_route": "BROKEN (empty id_token; only affects that route)",
+      "note": "`codex` shim = @bitkyc08/opencodex 2.39.0; official codex at codex.opencodex-real; model_provider=cliproxy"
     },
     "baseline_state": {
       "zloop_installed": false,
@@ -140,24 +140,24 @@
     {
       "probe_id": "P-CDX1",
       "question": "openai-codex SDK contract: thread_start/list/read/resume, turn/stream termination, crash/reconnect, bounded stale-active",
-      "status": "BLOCKED-manual",
-      "executed_at": "2026-09-02",
+      "status": "PASS",
+      "executed_at": "2026-09-02T15:30:00Z",
       "evidence_refs": [
-        "artifacts/capabilities/phase-1.json#commands"
+        "artifacts/probes/P-CDX1.json"
       ],
-      "fallback_triggered": "codex auth invalid -> BLOCKED-manual",
-      "notes": "Blocked: codex login status -> 'invalid ID token format' (rc=1). User re-login required before any live Codex probe."
+      "fallback_triggered": null,
+      "notes": "Live SDK minimal contract PASS via opencodex/cliproxy route (read_only sandbox turn completed in 14.8s). D-6 corrected by D-14."
     },
     {
       "probe_id": "P-CDX2",
       "question": "Strict worker dual hard gates: [agents].enabled=false removes spawn_agent family from tool catalog; network canaries (public + loopback/private) rejected",
-      "status": "BLOCKED-manual",
-      "executed_at": "2026-09-02",
+      "status": "PASS",
+      "executed_at": "2026-09-02T15:30:00Z",
       "evidence_refs": [
-        "artifacts/capabilities/phase-1.json#commands"
+        "artifacts/probes/P-CDX2.json"
       ],
-      "fallback_triggered": "codex auth invalid -> BLOCKED-manual",
-      "notes": "Blocked: codex auth invalid (see P-CDX1)."
+      "fallback_triggered": null,
+      "notes": "Public network canary BLOCKED under workspace_write (000/exit 1) => I29 holds on this route. agents.enabled=false removes spawn_agent family from self-reported catalog (strict stream enumeration at M7). Loopback canary inconclusive as-run (no listener on :9). Catalog includes provider-hosted web_search."
     },
     {
       "probe_id": "P-CDX3",
@@ -350,7 +350,7 @@
     }
   ],
   "next_actions": [
-    "User: re-login Codex (`codex login`) to unlock P-CDX1/P-CDX2/P-CDX3/P-LUNA1.",
+    "User: nothing to do for Codex anymore (opencodex/cliproxy route live-verified). Optional: restore ChatGPT-membership route only if that route is wanted later.",
     "User: open a NEW ZCode session (hooks now installed, 5 events) and run the first-session checklist in docs/OPERATIONS.md section 7; that session also unlocks P-HK1/HK2/HK3/HK4/P-BIND1/P-GC1/P-PLAT1.",
     "User: confirm removal of C:\\ProgramData\\OpenAI\\Codex\requirements.toml (backed up; sha256 6c0f4f7b...).",
     "Dev: apply D-8 controller-token redesign in code when the supervisor is built (M6); drop the attempts table in v1.1.",
