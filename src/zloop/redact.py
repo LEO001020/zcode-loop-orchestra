@@ -35,16 +35,36 @@ SECRET_FILE_RE = re.compile(
 
 # Dict keys whose NAME marks the value as secret ({"API_TOKEN": "x"}).
 # Segment match (split on _-. and lowercase) — "MY_TOKEN" hits, "author" does not.
+# D-21: bare "key" is NOT secret (it over-redacted primary_key / cache_key /
+# public_key_id / key_path / keyboard_key / ssh_key); only credential-SHAPED
+# names are: an explicit secret segment, or "api/access/private" IMMEDIATELY
+# followed by "key" (adjacent segment pair), or the fused compound form.
 _SECRET_KEY_SEGMENTS = {
     "token", "secret", "password", "passwd", "credential", "credentials",
-    "api_key", "apikey", "private_key", "access_key", "auth", "authorization",
-    "key",  # bare "key" errs safe (worker_env secret rejection depends on this)
+    "apikey", "auth", "authorization",
 }
+
+# Adjacent segment pairs that make a name credential-shaped (D-21):
+# MY_API_KEY / ACCESS_KEY / PRIVATE_KEY hit; PRIMARY_KEY / SSH_KEY do not.
+_SECRET_KEY_ADJACENCIES = {
+    ("api", "key"), ("access", "key"), ("private", "key"),
+}
+
+# Fused single-segment compound the split cannot separate ("ACCESSKEY").
+_COMPOUND_KEY_RE = re.compile(r"^(api|access|private)[_-]?key$")
 
 
 def key_is_secret(name: str) -> bool:
-    return any(seg in _SECRET_KEY_SEGMENTS
-               for seg in re.split(r"[\s_\-.]+", str(name).lower()) if seg)
+    n = str(name).lower().strip()
+    if not n:
+        return False
+    if _COMPOUND_KEY_RE.match(n):
+        return True
+    segs = [seg for seg in re.split(r"[\s_\-.]+", n) if seg]
+    if any(seg in _SECRET_KEY_SEGMENTS for seg in segs):
+        return True
+    return any((segs[i], segs[i + 1]) in _SECRET_KEY_ADJACENCIES
+               for i in range(len(segs) - 1))
 
 
 def redact_str(s: str) -> str:

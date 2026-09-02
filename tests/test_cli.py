@@ -11,6 +11,7 @@ from __future__ import annotations
 import json
 import os
 import re
+import shutil
 import sqlite3
 import subprocess
 import sys
@@ -128,7 +129,7 @@ def test_commands_require_registered_project(tmp_path, data_root):
                  ["run", "close", "R001"],
                  ["stage", "begin", "--objective", "x"],
                  ["stage", "status"], ["stage", "status", "S01"],
-                 ["stage", "close", "S01"],
+                 ["stage", "close", "S01"], ["stage", "promote", "S01"],
                  ["wave", "propose", "nope.json"], ["wave", "start", "W1"],
                  ["wave", "cancel", "W1"]):
         r = run_cli(*args, cwd=tmp_path, data_root=data_root)
@@ -794,6 +795,205 @@ def test_wave_cancel(git_repo, data_root):
                    data_root=data_root).returncode == 0
     r3 = run_cli("wave", "cancel", "W1", cwd=git_repo, data_root=data_root)
     assert r3.returncode == 5
+
+
+# ---- stage promote (VOL-11 §2, M8) ---------------------------------------------
+
+
+def _staging_workspace(pdir: Path, stage_id: str = "S01") -> Path:
+    """The stage's private staging worktree (the wave-start path convention)."""
+    return pdir / "workspaces" / stage_id / "staging"
+
+
+def _final_stage(staging: Path, rel_path: str, content: str,
+                 run_id: str = "R001", stage_id: str = "S01") -> str:
+    """Assemble the final candidate in the stage's private staging worktree
+    (VOL-11 §1 final staging) and return its commit SHA (staged_head)."""
+    target = staging / rel_path
+    target.parent.mkdir(parents=True, exist_ok=True)
+    target.write_text(content, encoding="utf-8")
+    _git_query(staging, "add", "-A")
+    _git_query(staging, "-c", "user.name=zloop", "-c",
+               "user.email=zloop@localhost", "commit", "-q", "-m",
+               f"final staging {run_id}/{stage_id}\n\n"
+               f"ZLoop-Run: {run_id}\nZLoop-Stage: {stage_id}")
+    return _git_query(staging, "rev-parse", "HEAD")
+
+
+def _run_mock_wave(git_repo, data_root, tmp_path, *, objective, risk=None,
+                   packets=None):
+    """run start -> stage begin -> wave propose -> wave start (mock); the
+    wave must have materialized every packet. Returns (run_id, stage_id)."""
+    packets = packets or [_packet("P01", ["src/a/**"],
+                                  risk_class=risk or "NORMAL",
+                                  acceptance=['python -c "exit(0)"'])]
+    lines = _start_run(git_repo, data_root, objective)
+    rid = json.loads(lines[1])["run_id"]
+    assert _stage_begin(git_repo, data_root, objective + " (stage slice)",
+                        risk=risk).returncode == 0
+    f = _write_packets(tmp_path, packets)
+    r = run_cli("wave", "propose", str(f), cwd=git_repo, data_root=data_root)
+    assert r.returncode == 0, r.stderr
+    r = run_cli("wave", "start", "W1", "--backend", "mock",
+                cwd=git_repo, data_root=data_root)
+    assert r.returncode == 0, r.stderr
+    summary = json.loads(r.stdout)
+    assert summary["ok"] is True, summary
+    assert summary["materialized"] == ["P01"]
+    return rid, "S01"
+
+
+def test_stage_promote_e2e(git_repo, data_root, tmp_path):
+    """Full execution path (M8): run start -> stage begin -> wave propose ->
+    wave start (mock) -> MATERIALIZED -> stage promote -> exit 0 with the
+    canonical HEAD advanced by exactly the staged commit (ff-only, I39), the
+    stage PROMOTED and the output JSON carrying new_head."""
+    rid, sid = _run_mock_wave(git_repo, data_root, tmp_path,
+                              objective="promote the staged slice")
+    pid = _only_project_id()
+    pdir = paths.project_dir(pid)
+    conn = zdb.connect(pdir)
+    try:
+        states = [x["state"] for x in conn.execute(
+            "SELECT state FROM packets ORDER BY packet_id")]
+        assert states == ["MATERIALIZED"]        # the M8 precondition
+    finally:
+        conn.close()
+    base_head = _git_query(git_repo, "rev-parse", "HEAD")
+
+    # final staging: the candidate commit in the private staging worktree
+    staged = _final_stage(_staging_workspace(pdir, sid), "src/a/feature.txt",
+                          "staged\n", rid, sid)
+    assert staged != base_head                   # a real advance, not a no-op
+
+    r = run_cli("stage", "promote", sid, cwd=git_repo, data_root=data_root)
+    assert r.returncode == 0, r.stderr
+    out = json.loads(r.stdout)
+    assert out["promoted"] is True
+    assert out["stage"] == sid
+    assert out["new_head"] == staged
+    # canonical advanced by the staged commit (ff): content checked out, clean
+    assert _git_query(git_repo, "rev-parse", "HEAD") == staged
+    assert (git_repo / "src" / "a" / "feature.txt").read_text(
+        encoding="utf-8") == "staged\n"
+    assert _git_query(git_repo, "status", "--porcelain") == ""
+    # S: stage PROMOTED (promote settled it), intent APPLIED, audited
+    conn = zdb.connect(pdir)
+    try:
+        st = conn.execute("SELECT state FROM stages WHERE stage_id=?",
+                          (sid,)).fetchone()
+        assert st["state"] == "PROMOTED"
+        intent = conn.execute(
+            "SELECT state FROM promotion_intents WHERE staged_head=?",
+            (staged,)).fetchone()
+        assert intent is not None and intent["state"] == "APPLIED"
+        kinds = [x["kind"] for x in conn.execute(
+            "SELECT kind FROM events ORDER BY seq")]
+        assert "promotion_applied" in kinds and "stage_promoted" in kinds
+    finally:
+        conn.close()
+
+
+def test_stage_promote_c2c_gate_and_skip(git_repo, data_root, tmp_path):
+    """HIGH-risk stage: promote without a recorded C2C result for the
+    run+stage -> exit 5 c2c_gate_required; --skip-c2c waives the gate
+    (audited as a c2c_waiver event) and the promotion then proceeds."""
+    rid, sid = _run_mock_wave(git_repo, data_root, tmp_path,
+                              objective="high risk slice", risk="HIGH")
+    pid = _only_project_id()
+    pdir = paths.project_dir(pid)
+    staged = _final_stage(_staging_workspace(pdir, sid), "src/a/hard.txt",
+                           "hard\n", rid, sid)
+
+    r = run_cli("stage", "promote", sid, cwd=git_repo, data_root=data_root)
+    assert r.returncode == 5
+    assert "c2c_gate_required" in (r.stdout + r.stderr)
+    assert "HIGH" in (r.stdout + r.stderr)
+    # the gate fires after staging: EXECUTING -> STAGED already happened,
+    # which is exactly what the --skip-c2c retry proceeds from
+    conn = zdb.connect(pdir)
+    try:
+        st = conn.execute("SELECT state FROM stages WHERE stage_id=?",
+                          (sid,)).fetchone()
+        assert st["state"] == "STAGED"
+        assert conn.execute(
+            "SELECT COUNT(*) FROM events WHERE kind='c2c_recorded'").fetchone()[0] == 0
+    finally:
+        conn.close()
+
+    r2 = run_cli("stage", "promote", sid, "--skip-c2c",
+                 cwd=git_repo, data_root=data_root)
+    assert r2.returncode == 0, r2.stderr
+    out = json.loads(r2.stdout)
+    assert out["promoted"] is True and out["new_head"] == staged
+    assert out.get("c2c_waived") is True
+    assert _git_query(git_repo, "rev-parse", "HEAD") == staged
+    conn = zdb.connect(pdir)
+    try:
+        st = conn.execute("SELECT state FROM stages WHERE stage_id=?",
+                          (sid,)).fetchone()
+        assert st["state"] == "PROMOTED"
+        kinds = [x["kind"] for x in conn.execute(
+            "SELECT kind FROM events ORDER BY seq")]
+        assert "c2c_waiver" in kinds
+        assert "c2c_recorded" not in kinds           # nothing was fabricated
+    finally:
+        conn.close()
+
+
+def test_stage_promote_dirty_canonical_and_staging_missing(git_repo, data_root,
+                                                           tmp_path):
+    """A dirty canonical worktree refuses the promotion (DIRTY_OR_DRIFT,
+    repo untouched); a missing staging worktree refuses with
+    staging_missing."""
+    rid, sid = _run_mock_wave(git_repo, data_root, tmp_path,
+                              objective="promote blocked paths")
+    pid = _only_project_id()
+    pdir = paths.project_dir(pid)
+    staged = _final_stage(_staging_workspace(pdir, sid), "src/a/cand.txt",
+                          "candidate\n", rid, sid)
+    base_head = _git_query(git_repo, "rev-parse", "HEAD")
+
+    # dirty canonical (third-party touch) -> exit 5 DIRTY_OR_DRIFT, untouched
+    (git_repo / "scratch.txt").write_text("someone was here\n", encoding="utf-8")
+    r = run_cli("stage", "promote", sid, cwd=git_repo, data_root=data_root)
+    assert r.returncode == 5
+    assert "DIRTY_OR_DRIFT" in (r.stdout + r.stderr)
+    assert _git_query(git_repo, "rev-parse", "HEAD") == base_head
+    assert not (git_repo / "src" / "a" / "cand.txt").exists()
+    (git_repo / "scratch.txt").unlink()
+
+    # staging worktree gone -> exit 5 staging_missing
+    staging = pdir / "workspaces" / sid / "staging"
+    shutil.rmtree(staging)
+    _git_query(git_repo, "worktree", "prune")
+    r2 = run_cli("stage", "promote", sid, cwd=git_repo, data_root=data_root)
+    assert r2.returncode == 5
+    assert "staging_missing" in (r2.stdout + r2.stderr)
+
+
+def test_stage_promote_precondition_reasons(git_repo, data_root, tmp_path):
+    """nothing_materialized (no packets at all), unknown stage, and
+    packets_pending (a proposed wave that never started)."""
+    lines = _start_run(git_repo, data_root, "promote preconditions")
+    rid = json.loads(lines[1])["run_id"]
+    assert _stage_begin(git_repo, data_root).returncode == 0
+
+    r = run_cli("stage", "promote", "S99", cwd=git_repo, data_root=data_root)
+    assert r.returncode == 5
+    assert "unknown stage" in (r.stdout + r.stderr)
+
+    r = run_cli("stage", "promote", "S01", cwd=git_repo, data_root=data_root)
+    assert r.returncode == 5
+    assert "nothing_materialized" in (r.stdout + r.stderr)
+
+    f = _write_packets(tmp_path, [_packet("P01", ["src/a/**"])])
+    assert run_cli("wave", "propose", str(f), cwd=git_repo,
+                   data_root=data_root).returncode == 0
+    r = run_cli("stage", "promote", "S01", cwd=git_repo, data_root=data_root)
+    assert r.returncode == 5
+    assert "packets_pending" in (r.stdout + r.stderr)
+    assert "P01:PENDING" in (r.stdout + r.stderr)
 
 
 # ---- verify-run stage awareness (VOL-08 §7) ---------------------------------

@@ -1,10 +1,18 @@
 """zloop.research.broker — M4 Research Broker (VOL-15 §1/§4, VOL-04 §10).
 
 Single Kimi K1 lane (decision D-10). The broker NEVER raises on per-question
-lane failures: every question is captured into its own evidence record with
-verification="source_unverified" and answer=None. The lane runs in an
-independent temp cwd — never the project dir or any canonical writable root
-(VOL-15 §7 / I42).
+lane failures: every question is captured into its own record. The lane runs
+in an independent temp cwd — never the project dir or any canonical writable
+root (VOL-15 §7 / I42).
+
+D-18 three-axis semantics per record: ``provider_health`` (was the provider
+reachable/authenticated/quota-healthy?) is independent of
+``retrieval_outcome`` (did we obtain evidence?) which is independent of
+``trust``/``verification`` (how much do we believe it?). Quota exhaustion is
+QUOTA_EXHAUSTED + NO_EVIDENCE — NOT "evidence, unverified": obtaining
+nothing because the provider has no quota is a different epistemic state
+from obtaining evidence whose provenance is pending. claim/raw_ref/
+verification/trust are only ever set for EVIDENCE_FOUND records.
 """
 from __future__ import annotations
 
@@ -19,18 +27,23 @@ from typing import Any, Optional
 
 from .. import ids, redact
 from ..evidence import BlobStore
-from .kimi_server import KimiServerLane, messages_blob_bytes
+from .kimi_server import (KimiServerLane, messages_blob_bytes,
+                          HEALTH_ERROR, HEALTH_OK,
+                          RETRIEVAL_EVIDENCE_FOUND, RETRIEVAL_NO_EVIDENCE)
 
 LANE = "kimi"
 TRUST = "external_untrusted"
 CLAIM_MAX = 300
 _RESEARCH_ID_RE = re.compile(r"RS\d{3,}")
 
-# VOL-04 §10 evidence-record fields (single source of truth for the shape)
+# VOL-04 §10 evidence-record fields + the D-18 axis fields (single source of
+# truth for the shape). verification/claim/raw_ref/trust are present as keys
+# on every record but are None unless retrieval_outcome == EVIDENCE_FOUND.
 VOL04_FIELDS = (
     "ref", "research_id", "question_id", "lane", "query", "claim", "url",
     "title", "source_class", "observed_at", "published_at", "retrieved_at",
     "raw_ref", "content_hash", "verification", "trust",
+    "provider_health", "retrieval_outcome",
 )
 
 
@@ -91,14 +104,19 @@ def _run_question(lane: Any, store: BlobStore, research_id: str,
         "retrieved_at": now,
         "raw_ref": None,
         "content_hash": None,
-        "verification": "source_unverified",
-        "trust": TRUST,
+        "verification": None,  # D-18: evidence fields exist only for
+        "trust": None,          # EVIDENCE_FOUND records
+        "provider_health": HEALTH_ERROR,
+        "retrieval_outcome": RETRIEVAL_NO_EVIDENCE,
         "answer": None,
         "last_turn_reason": None,
         "session_id": None,
         "error": None,
     }
     if not query:
+        # a spec problem, not a provider fault: the provider was never
+        # contacted, so the health axis carries no provider failure
+        rec["provider_health"] = HEALTH_OK
         rec["error"] = "missing query"
         return rec
 
@@ -108,22 +126,39 @@ def _run_question(lane: Any, store: BlobStore, research_id: str,
         res = lane.ask(str(query), cwd=temp_cwd, timeout_s=timeout_s)
         answer = res.get("answer")
         reason = res.get("last_turn_reason")
+        health = res.get("provider_health")
+        if not health:   # lanes predating D-18: derive, never trust blanks
+            health = (HEALTH_OK if (reason == "completed" and answer)
+                      else HEALTH_ERROR)
+        rec["provider_health"] = health
         rec["last_turn_reason"] = reason
         rec["session_id"] = res.get("session_id")
-        raw = res.get("raw_messages")
-        if raw is not None:
-            safe = redact.redact_obj(raw)
-            digest = store.put(messages_blob_bytes(safe))
-            rec["raw_ref"] = "blob:sha256:" + digest
-        if reason == "completed" and answer:
+
+        found = bool(reason == "completed" and answer
+                     and health == HEALTH_OK)
+        rec["retrieval_outcome"] = (RETRIEVAL_EVIDENCE_FOUND if found
+                                    else RETRIEVAL_NO_EVIDENCE)
+        if found:
+            raw = res.get("raw_messages")
+            if raw is not None:
+                safe = redact.redact_obj(raw)
+                digest = store.put(messages_blob_bytes(safe))
+                rec["raw_ref"] = "blob:sha256:" + digest
             rec["answer"] = redact.redact_str(str(answer))
             rec["claim"] = rec["answer"][:CLAIM_MAX]
             rec["content_hash"] = sha256(
                 rec["answer"].encode("utf-8")).hexdigest()
             rec["verification"] = "lane_reported"
+            rec["trust"] = TRUST
         else:
-            rec["error"] = f"no answer (last_turn_reason={reason})"
+            # NO_EVIDENCE: keep the health axis and a readable cause; the
+            # evidence-provenance fields stay null
+            err = res.get("error") or \
+                f"no answer (last_turn_reason={reason})"
+            rec["error"] = redact.redact_str(str(err))[:300]
     except Exception as e:  # per-question isolation: never raise (M4)
+        rec["provider_health"] = HEALTH_ERROR
+        rec["retrieval_outcome"] = RETRIEVAL_NO_EVIDENCE
         rec["error"] = redact.redact_str(f"{type(e).__name__}: {e}")[:300]
     finally:
         shutil.rmtree(temp_cwd, ignore_errors=True)

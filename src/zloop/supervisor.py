@@ -1,10 +1,20 @@
 """zloop.supervisor — the wave supervisor (M6): one cold long process that
 owns a wave end-to-end (VOL-03 §5, VOL-09 §5/§7/§8).
 
-``run_wave`` claims the D-8 controller token first — a CAS on
-``runs.controller_nonce`` (nonce + pid + pid_start), never an OS lock, and
-never a wrestle: a failed claim returns ``controller_busy`` immediately
-(I5). It then:
+``run_wave`` refuses to start (D-17/P-SEC1) while the kimi web server's
+loopback escalation path is open (``kimi_server_up``), then claims the
+D-8 controller token — a CAS on ``runs.controller_nonce`` (nonce + pid +
+pid_start), never an OS lock, and never a wrestle: a live owner refuses
+the wave immediately with ``owner_alive`` (I5). When the run is free this
+is a fresh claim; when a previous owner's nonce exists the claim goes
+through ``ControlStore.takeover_controller`` (D-20), which mechanically
+proves the old owner dead from its recorded (pid, real process start
+time) identity before any CAS — an undecidable identity fails closed
+(``ambiguous_fail_closed``, I43). The ``pid_start`` recorded with the
+claim is the REAL process creation time (probed once per process), so a
+future takeover after OUR death can prove us dead too; if the probe
+fails the claim still proceeds with ``pid_start=None``, accepting that
+any later takeover of us will fail closed (ambiguous). It then:
 
 1. validates the proposal (``wave.validate_wave`` against the stage's
    ``risk_effective`` floor; the stage must be EXECUTING and its base
@@ -40,24 +50,26 @@ never a wrestle: a failed claim returns ``controller_busy`` immediately
 
 The controller token is released on every exit path (``finally``), even
 on exceptions.
-
-``pid_start`` caveat (D-8): the value recorded at claim time is the claim
-timestamp — a best-effort hint only. Death-proof takeover always requires
-mechanically proving the previous owner's process identity from external
-evidence BEFORE any CAS; this module never attempts a takeover
-(``expected_old`` is never used here).
 """
 from __future__ import annotations
 
 import json
 import os
 import time
+import urllib.error
+import urllib.request
 from pathlib import Path
 from typing import Any, Optional
 
 from . import ids
+from .db import process_start_time
 from .stage import check_stage_base, get_stage, transition_stage
 from .wave import accept_result, validate_wave
+
+# D-17/P-SEC1: the kimi web server's loopback escalation path. The port
+# answering at all (any HTTP response) means the path is open — worker
+# waves must not run until `kimi web` is stopped.
+KIMI_HEALTHZ_URL = "http://127.0.0.1:58627/api/v1/healthz"
 
 # A packet the supervisor no longer needs to drive. SUPERSEDED is included
 # beyond the VOL-09 terminal four because a mid-wave stage replan
@@ -70,6 +82,46 @@ TERMINAL_PACKET_STATES = frozenset(
 # A dependency in any of these states can never become MATERIALIZED, so a
 # dependent packet is BLOCKED instead of waiting forever.
 DEAD_DEP_STATES = frozenset({"FAILED", "BLOCKED", "CANCELLED", "SUPERSEDED"})
+
+
+# ---------------------------------------------------------------- gates
+
+
+def kimi_server_up(timeout_s: float = 1.0) -> bool:
+    """D-17/P-SEC1: is the kimi web server's loopback escalation path open?
+
+    True iff ``http://127.0.0.1:58627/api/v1/healthz`` answers with ANY
+    HTTP response (the status does not matter — the port answering at all
+    means an attacker-reachable escalation path exists). Refused/timeout
+    (nothing listening) -> False. Module attribute so tests can
+    monkeypatch it.
+    """
+    try:
+        with urllib.request.urlopen(KIMI_HEALTHZ_URL, timeout=timeout_s):
+            pass
+        return True
+    except urllib.error.HTTPError:
+        return True  # an HTTP error is still an HTTP response: server is up
+    except Exception:
+        return False  # refused / timed out / unreachable: path closed
+
+
+# Our own real process start time (D-20), probed once per process and
+# cached module-level: exactly one powershell call per supervisor process.
+_OWN_PSTART: Optional[str] = None
+
+
+def _own_process_start() -> Optional[str]:
+    """REAL creation time of THIS process, or None when the probe fails.
+
+    The claim records pid_start=None in that case — the claim still
+    proceeds, accepting that a later takeover_controller after our death
+    will fail closed (ambiguous) instead of proving us dead. Fail-closed
+    ambiguity is acceptable; a fabricated start time is not."""
+    global _OWN_PSTART
+    if _OWN_PSTART is None:
+        _OWN_PSTART = process_start_time(os.getpid())
+    return _OWN_PSTART
 
 
 # ---------------------------------------------------------------- helpers
@@ -151,14 +203,19 @@ def _summary(wave_name: str, ok: bool, rows: Optional[dict[str, dict]],
 def run_wave(store, run_id: str, stage_id: str, wave_no, packets: list[dict],
              backend, *, git_root: Path, staging_ws: Path,
              workspaces_root: Path, poll_s: float = 0.2) -> dict:
-    """Supervise one wave to completion (VOL-09 §5/§7/§8, D-8).
+    """Supervise one wave to completion (VOL-09 §5/§7/§8, D-8, D-17, D-20).
 
-    Claims the run's controller token first: the CAS claim fails with
-    ``{"ok": False, "reason": "controller_busy"}`` when another controller
-    owns the run — the supervisor never wrestles (I5). The ``pid_start``
-    recorded with the claim is the claim timestamp, a best-effort hint:
-    death-proof takeover requires external mechanical proof of the old
-    owner's process identity (D-8); this module never takes over.
+    Refuses before touching anything while the kimi web server is up
+    (D-17/P-SEC1: ``{"ok": False, "reason": "KIMI_SERVER_UP", "detail"}``).
+    Then claims the run's controller token: a fresh CAS claim when the run
+    is free; otherwise ``takeover_controller`` (D-20), which mechanically
+    proves the old owner dead from its recorded (pid, pid_start) identity
+    before any CAS — a live owner refuses with ``owner_alive``, an
+    undecidable one with ``ambiguous_fail_closed`` (I43), and the supervisor
+    never wrestles (I5). The ``pid_start`` recorded with the claim is the
+    REAL process creation time (not a claim timestamp); a failed probe
+    records ``pid_start=None`` and only costs fail-closed ambiguity on any
+    later takeover of us.
 
     ``git_root`` / ``staging_ws`` / ``workspaces_root`` locate the canonical
     repo, the private staging worktree that materialization commits into
@@ -168,20 +225,45 @@ def run_wave(store, run_id: str, stage_id: str, wave_no, packets: list[dict],
 
     Returns ``{"wave", "ok", "cancelled", "materialized", "blocked",
     "failed", "cancelled_packets", "running", "pending"}`` plus ``reason``
-    on non-ok exits ("unknown_run" | "controller_busy" | "unknown_stage" |
-    "invalid_wave" (+ ``errors``) | "cancelled" | "stalled"). The
-    controller token is released on every exit path, including exceptions.
+    on non-ok exits ("unknown_run" | "KIMI_SERVER_UP" (+ ``detail``) |
+    "controller_busy" | "owner_alive" | "ambiguous_fail_closed" |
+    "unknown_stage" | "invalid_wave" (+ ``errors``) | "cancelled" |
+    "stalled"). The controller token is released on every exit path,
+    including exceptions.
     """
     wave_name = _wave_name(wave_no)
     if store.run(run_id) is None:
         return _summary(wave_name, False, None, [], reason="unknown_run")
+    # D-17/P-SEC1: refuse before claiming while the loopback escalation
+    # path is open (module attribute -> injectable for tests).
+    if kimi_server_up():
+        out = _summary(wave_name, False, None, [], reason="KIMI_SERVER_UP")
+        out["detail"] = ("loopback escalation path open (P-SEC1/D-17): "
+                         "stop kimi web before running worker waves")
+        return out
     nonce = ids.new_nonce()
-    # D-8: S-internal CAS claim; pid_start is a claim-time hint only (see
-    # module docstring — real takeover proof is external process identity).
-    if not store.claim_controller(run_id, nonce=nonce, pid=os.getpid(),
-                                  pid_start=ids.now_iso()):
-        return _summary(wave_name, False, None, [],
-                        reason="controller_busy")
+    # D-20: record our REAL process identity — pid plus true creation time
+    # (one powershell probe, cached), never a claim timestamp.
+    pstart = _own_process_start()
+    ctrl = store.controller(run_id)
+    old = ctrl.get("controller_nonce") if ctrl else None
+    if old is None:
+        # D-8: fresh claim only when free.
+        if not store.claim_controller(run_id, nonce=nonce, pid=os.getpid(),
+                                      pid_start=pstart):
+            return _summary(wave_name, False, None, [],
+                            reason="controller_busy")
+    else:
+        # D-20: death-proof takeover — the store proves the recorded owner
+        # dead before the CAS; live/ambiguous owners refuse us.
+        result = store.takeover_controller(run_id, nonce=nonce,
+                                           pid=os.getpid(), pid_start=pstart,
+                                           expected_old=old)
+        if not result.get("ok"):
+            reason = result.get("reason")
+            if reason == "cas_failed":
+                reason = "controller_busy"  # raced on a free/taken token
+            return _summary(wave_name, False, None, [], reason=reason)
     try:
         return _supervise(store, run_id, stage_id, wave_name, packets,
                           backend, Path(git_root), Path(staging_ws),

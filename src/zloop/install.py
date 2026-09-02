@@ -1,12 +1,22 @@
 """zloop.install — hook config management (VOL-05 §1).
 
-Writes/reads the user-level `~/.zcode/cli/config.json` hooks block: all
-`type: "process"`, single entrypoint `zloop-hook handle`, no matcher
-(capture everything), seven events. Conservative v1: if an existing
-non-zloop hooks config is present we refuse and ask for a manual merge —
-never clobber a config we did not write. All writes are atomic
-(tmp + os.replace) and every pre-existing config is backed up to
-~/.zloop/hygiene-backup/ before being replaced.
+Two registration surfaces:
+
+* **Plugin tree (production target, D-16)** — ``emit_plugin`` writes a
+  local ZCode plugin (``.zcode-plugin/plugin.json`` + ``hooks/hooks.json``
+  + ``zloop-hook.cmd``) that can be installed from ZCode Settings →
+  Plugin Management in one click. Plugin-scope hooks tax only the
+  workspaces where the plugin is enabled — no user-global hook tax.
+* **User config (explicit compatibility fallback, D-16)** —
+  ``install_hooks``/``uninstall_hooks`` write/remove the user-level
+  ``~/.zcode/cli/config.json`` hooks block: all `type: "process"`, single
+  entrypoint `zloop-hook handle`, no matcher (capture everything), five
+  post-execution events (D-9).
+
+Conservative v1: if an existing non-zloop hooks config is present we
+refuse and ask for a manual merge — never clobber a config we did not
+write. All writes are atomic (tmp + os.replace) and every pre-existing
+config is backed up to ~/.zloop/hygiene-backup/ before being replaced.
 """
 from __future__ import annotations
 
@@ -193,3 +203,81 @@ def hook_status(config_path: Optional[PathLike] = None) -> dict:
                 status["command"] = entry_hooks[0].get("command")
                 break
     return status
+
+
+# ---- plugin emission (D-16: plugin-scope is the production target) ---------
+
+PLUGIN_NAME = "zloop"
+PLUGIN_DESCRIPTION = ("ZLoop evidence & session-binding hooks "
+                      "(5 post-execution events)")
+PLUGIN_VERSION = "0.1.0"
+# ${ZCODE_PLUGIN_ROOT} is expanded by ZCode to the installed plugin dir, so
+# the emitted tree is relocatable; only zloop-hook.cmd bakes an absolute
+# python path (regenerate it if the repo moves).
+PLUGIN_HOOK_COMMAND = r"${ZCODE_PLUGIN_ROOT}\zloop-hook.cmd"
+
+
+def plugin_hooks_block(timeout_ms: int = HOOKS_TIMEOUT_MS) -> dict:
+    """Body of ``hooks/hooks.json``: the same 5 post-execution events (D-9)
+    as the user-config install, single process entrypoint, no matcher."""
+    return {"hooks": {
+        ev: [{"hooks": [{"type": "process",
+                        "command": PLUGIN_HOOK_COMMAND,
+                        "args": ["handle"],
+                        "timeoutMs": timeout_ms}]}]
+        for ev in REGISTERED_EVENTS
+    }}
+
+
+def _cmd_wrapper(python_exe: str) -> str:
+    """zloop-hook.cmd: run the hook module with the recorded interpreter.
+
+    `exit /b 0` keeps the fail-soft contract (VOL-05: the hook never
+    surfaces a non-zero exit) even if the interpreter itself fails to start.
+    """
+    return "\r\n".join([
+        "@echo off",
+        f'"{python_exe}" -m zloop.hook %*',
+        "exit /b 0",
+        "",
+    ])
+
+
+def emit_plugin(dest: PathLike, python_exe: str, *,
+                 timeout_ms: int = HOOKS_TIMEOUT_MS) -> dict:
+    """Emit a local ZCode plugin tree (D-16) into ``dest``:
+
+      ``.zcode-plugin/plugin.json`` — plugin manifest (name/description/
+        version/hooks pointer)
+      ``hooks/hooks.json`` — the 5 post-execution events (D-9), all
+        ``type: "process"``, command templated on ${ZCODE_PLUGIN_ROOT}
+      ``zloop-hook.cmd`` — Windows wrapper running
+        ``"<python_exe>" -m zloop.hook`` (absolute path)
+
+    Install = ZCode Settings → Plugin Management → add this directory as a
+    local plugin/marketplace (one click). The user-config path
+    (``zloop install``) stays as the explicit compatibility fallback.
+    Re-running overwrites (atomic per file). ``python_exe`` must be able
+    to import ``zloop`` (e.g. the repo's venv interpreter).
+    """
+    dest = Path(dest)
+    exe = Path(python_exe)
+    if not exe.is_absolute():
+        exe = exe.resolve()
+    files = [dest / ".zcode-plugin" / "plugin.json",
+             dest / "hooks" / "hooks.json",
+             dest / "zloop-hook.cmd"]
+    try:
+        _atomic_write(files[0], {"name": PLUGIN_NAME,
+                                 "description": PLUGIN_DESCRIPTION,
+                                 "version": PLUGIN_VERSION,
+                                 "hooks": "hooks/hooks.json"})
+        _atomic_write(files[1], plugin_hooks_block(timeout_ms))
+        files[2].parent.mkdir(parents=True, exist_ok=True)
+        files[2].write_text(_cmd_wrapper(str(exe)),
+                            encoding="utf-8", newline="")
+    except OSError as e:
+        return {"ok": False, "reason": f"cannot write plugin tree: {e}"}
+    return {"ok": True, "dest": str(dest), "python_exe": str(exe),
+            "events": len(REGISTERED_EVENTS),
+            "files": [str(f) for f in files]}

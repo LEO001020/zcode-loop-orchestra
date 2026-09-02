@@ -1,8 +1,10 @@
-"""M4 Research Broker tests (VOL-15 §3/§4, VOL-04 §10).
+"""M4 Research Broker tests (VOL-15 §3/§4, VOL-04 §10, D-18/D-19).
 
 No live kimi dependency by default: the broker is exercised through a
 FakeLane, and the real KimiServerLane is exercised end-to-end against a
-stdlib stub HTTP server that implements the P-KIM1-verified contract.
+stdlib stub HTTP server that implements the P-KIM1-verified contract
+(including the D-18 failure shapes: 403 quota, 401 auth, dead server, and
+the failed-turn quota marker). D-19 asserts the searcher-only toolset.
 The one real quota-consuming test is gated behind ZLOOP_KIMI_LIVE.
 """
 from __future__ import annotations
@@ -29,10 +31,13 @@ from zloop.research import broker, kimi_server  # noqa: E402
 # ---------------------------------------------------------------------------
 
 class FakeLane:
-    def __init__(self, answers=None, errors=None, reason="completed"):
+    def __init__(self, answers=None, errors=None, reason="completed",
+                 provider_health="OK", health_overrides=None):
         self.answers = dict(answers or {})   # exact query -> answer
-        self.errors = dict(errors or {})     # exact query -> exception
+        self.errors = dict(errors or {})      # exact query -> exception
         self.reason = reason
+        self.provider_health = provider_health          # D-18 default health
+        self.health_overrides = dict(health_overrides or {})  # per query
         self.calls = []
 
     def openapi_digest(self):
@@ -47,6 +52,13 @@ class FakeLane:
         })
         if question in self.errors:
             raise self.errors[question]
+        health = self.health_overrides.get(question, self.provider_health)
+        if health != "OK":   # D-18: structured provider failure, no raise
+            return {"answer": None, "provider_health": health,
+                    "last_turn_reason": "failed",
+                    "session_id": "session_fake",
+                    "raw_messages": [], "raw_messages_ref": "0" * 64,
+                    "error": f"provider health {health} (usage limit)"}
         ans = self.answers.get(question, "default answer")
         msgs = [
             {"role": "user",
@@ -54,7 +66,8 @@ class FakeLane:
             {"role": "assistant",
              "content": [{"type": "text", "text": ans}]},
         ]
-        return {"answer": ans, "last_turn_reason": self.reason,
+        return {"answer": ans, "provider_health": "OK",
+                "last_turn_reason": self.reason,
                 "session_id": "session_fake",
                 "raw_messages": msgs,
                 "raw_messages_ref": "0" * 64}
@@ -105,6 +118,10 @@ def test_manifest_shape_and_claim_truncation(tmp_path):
     assert rec["content_hash"] == sha256(("B" * 400 + " tail")
                                          .encode()).hexdigest()
     assert rec["verification"] == "lane_reported"
+    # D-18 three axes on the happy path (b)
+    assert rec["provider_health"] == "OK"
+    assert rec["retrieval_outcome"] == "EVIDENCE_FOUND"
+    assert rec["trust"] == "external_untrusted"
     assert rec["observed_at"] and rec["retrieved_at"]
     # the full transcript lives in the blob CAS
     blob = _blob_text(proj, rec)
@@ -120,29 +137,64 @@ def test_failure_isolation_broker_never_raises(tmp_path):
                       {"id": "Q2", "query": "ok q"}]}, lane=lane)
 
     r1, r2 = out["results"]
-    assert r1["verification"] == "source_unverified"
+    # (d) a raising lane is an unclassified provider error — but NO_EVIDENCE,
+    # never a fake "unverified evidence" record
+    assert r1["provider_health"] == "ERROR"
+    assert r1["retrieval_outcome"] == "NO_EVIDENCE"
+    assert r1["verification"] is None
+    assert r1["trust"] is None
     assert r1["answer"] is None and r1["claim"] is None
     assert r1["raw_ref"] is None and r1["content_hash"] is None
     assert "provider exploded" in r1["error"]
+    # the next question still runs to completion
+    assert r2["provider_health"] == "OK"
+    assert r2["retrieval_outcome"] == "EVIDENCE_FOUND"
     assert r2["verification"] == "lane_reported"
+    assert r2["trust"] == "external_untrusted"
     assert r2["answer"] == "fine"
     # manifest still written with both records
     manifest = json.loads((proj / "research" / "RS001" / "manifest.json")
                          .read_text(encoding="utf-8"))
     assert len(manifest["results"]) == 2
+    assert all("provider_health" in r and "retrieval_outcome" in r
+               for r in manifest["results"])
 
 
-def test_failed_turn_reason_marks_source_unverified(tmp_path):
-    # a lane that RETURNS (no exception) but with a failed turn reason
+def test_quota_exhausted_is_not_source_unverified(tmp_path):
+    # (a) D-18: "obtained NOTHING (provider quota)" != "obtained evidence,
+    # provenance pending" — the evidence-provenance fields must all be null
+    lane = FakeLane(health_overrides={"quota q": "QUOTA_EXHAUSTED"})
+    out = broker.run_research(_proj(tmp_path), {
+        "questions": [{"id": "Q1", "query": "quota q"},
+                      {"id": "Q2", "query": "fine q"}]}, lane=lane)
+    r1, r2 = out["results"]
+    assert r1["provider_health"] == "QUOTA_EXHAUSTED"
+    assert r1["retrieval_outcome"] == "NO_EVIDENCE"
+    assert r1["answer"] is None
+    assert r1["claim"] is None
+    assert r1["verification"] is None
+    assert r1["trust"] is None
+    assert r1["raw_ref"] is None and r1["content_hash"] is None
+    assert "QUOTA_EXHAUSTED" in r1["error"]
+    # a healthy question in the same run is unaffected
+    assert r2["provider_health"] == "OK"
+    assert r2["retrieval_outcome"] == "EVIDENCE_FOUND"
+
+
+def test_failed_turn_reason_is_no_evidence(tmp_path):
+    # a lane that RETURNS (no exception) but with a failed turn reason:
+    # provider healthy, nothing obtained — not "evidence, unverified"
     lane = FakeLane(answers={"q": ""}, reason="failed")
     out = broker.run_research(_proj(tmp_path), {
         "questions": [{"id": "Q1", "query": "q"}]}, lane=lane)
     rec = out["results"][0]
-    assert rec["verification"] == "source_unverified"
+    assert rec["provider_health"] == "OK"
+    assert rec["retrieval_outcome"] == "NO_EVIDENCE"
+    assert rec["verification"] is None
+    assert rec["trust"] is None
     assert rec["answer"] is None and rec["claim"] is None
+    assert rec["raw_ref"] is None and rec["content_hash"] is None
     assert "last_turn_reason=failed" in rec["error"]
-    # raw messages are still archived for forensics
-    assert rec["raw_ref"] and rec["raw_ref"].startswith("blob:sha256:")
 
 
 def test_redaction_in_blob_and_claim(tmp_path):
@@ -187,15 +239,19 @@ def test_research_id_allocation_sequence(tmp_path):
                             lane=lane)
 
 
-def test_trust_always_external_untrusted(tmp_path):
+def test_trust_only_for_found_evidence(tmp_path):
+    # D-18: external_untrusted is an EVIDENCE-found judgement; records that
+    # obtained nothing carry no trust at all
     lane = FakeLane(errors={"bad": RuntimeError("x")})
     out = broker.run_research(_proj(tmp_path), {
         "questions": [{"id": "Q1", "query": "bad"},
                       {"id": "Q2", "query": "good"}]}, lane=lane)
-    assert all(r["trust"] == "external_untrusted" for r in out["results"])
-    assert all(r["verification"] in
-               ("lane_reported", "source_unverified", "verified_fetch",
-                "conflicted") for r in out["results"])
+    r1, r2 = out["results"]
+    assert r1["trust"] is None and r1["verification"] is None
+    assert r2["trust"] == "external_untrusted"
+    assert r2["verification"] == "lane_reported"
+    assert r2["retrieval_outcome"] == "EVIDENCE_FOUND"
+    assert r1["retrieval_outcome"] == "NO_EVIDENCE"
 
 
 def test_lane_runs_in_isolated_temp_cwd(tmp_path):
@@ -221,7 +277,10 @@ def test_missing_query_captured_not_raised(tmp_path):
         "questions": [{"id": "Q1"}]}, lane=FakeLane())
     rec = out["results"][0]
     assert rec["question_id"] == "Q1"
-    assert rec["verification"] == "source_unverified"
+    # a spec problem, not a provider fault — no evidence obtained
+    assert rec["provider_health"] == "OK"
+    assert rec["retrieval_outcome"] == "NO_EVIDENCE"
+    assert rec["verification"] is None
     assert rec["error"] == "missing query"
 
 
@@ -265,6 +324,9 @@ class _KimiStub(http.server.ThreadingHTTPServer):
         self.profile_bodies = []
         self.create_bodies = []
         self.aborted = False
+        # failure injection (D-18 classification tests)
+        self.fail_prompts_with = None   # (status, payload) from prompts
+        self.quota_fail_turn = False    # failed turn + usage-limit marker
 
 
 class _KimiStubHandler(http.server.BaseHTTPRequestHandler):
@@ -295,6 +357,10 @@ class _KimiStubHandler(http.server.BaseHTTPRequestHandler):
         if path == "/openapi.json":                # requires auth (live)
             return self._send(b'{"openapi":"3.1.0","paths":{}}')
         if path == "/api/v1/sessions/session_test1/messages":
+            final_text = ("FINAL API_TOKEN=secret123456"
+                          if not self.server.quota_fail_turn else
+                          "the turn could not finish: usage limit reached "
+                          "for the API (quota)")
             items = [
                 {"role": "user",
                  "content": [{"type": "text", "text": "the question"}]},
@@ -302,8 +368,7 @@ class _KimiStubHandler(http.server.BaseHTTPRequestHandler):
                     {"type": "tool_use", "tool_call_id": "t1",
                      "tool_name": "WebSearch", "input": {}}]},
                 {"role": "assistant", "content": [
-                    {"type": "text",
-                     "text": "FINAL API_TOKEN=secret123456"}]},
+                    {"type": "text", "text": final_text}]},
                 {"role": "assistant", "type": "meta:session.resume_hint",
                  "content": [{"type": "text", "text": "hint"}]},
             ]
@@ -311,7 +376,10 @@ class _KimiStubHandler(http.server.BaseHTTPRequestHandler):
                                "data": {"items": items, "has_more": False}})
         if path == "/api/v1/sessions/session_test1":
             self.server.poll_count += 1
-            ltr = "completed" if self.server.poll_count >= 2 else None
+            if self.server.quota_fail_turn:
+                ltr = "failed" if self.server.poll_count >= 2 else None
+            else:
+                ltr = "completed" if self.server.poll_count >= 2 else None
             return self._send({"code": 0, "msg": "success",
                                "data": {"id": "session_test1",
                                         "last_turn_reason": ltr}})
@@ -333,9 +401,12 @@ class _KimiStubHandler(http.server.BaseHTTPRequestHandler):
                                "data": {"id": "session_test1"}})
         if self.path == "/api/v1/sessions/session_test1/prompts":
             self.server.prompt_bodies.append(body)
+            fail = self.server.fail_prompts_with
+            if fail is not None:
+                return self._send(fail[1], status=fail[0])
             return self._send({"code": 0, "msg": "success",
-                               "data": {"prompt_id": "msg_1",
-                                        "status": "running"}})
+                              "data": {"prompt_id": "msg_1",
+                                       "status": "running"}})
         if self.path == "/api/v1/sessions/session_test1:abort":
             self.server.aborted = True
             return self._send({"code": 0, "msg": "success",
@@ -377,6 +448,9 @@ def test_ask_full_flow_against_stub(stub_server, tmp_path):
     assert res["last_turn_reason"] == "completed"
     assert res["prompt_endpoint"] == "POST /api/v1/sessions/session_test1/prompts"
     assert res["prompt_body_shape"] == "content:array_of_typed_parts"
+    # D-18: healthy provider, real answer
+    assert res["provider_health"] == "OK"
+    assert res["error"] is None
     # terminal answer skips tool-only and trailing meta records
     assert res["answer"] == "FINAL API_TOKEN=secret123456"
     # raw messages are redacted and digest = canonical bytes of them
@@ -393,9 +467,18 @@ def test_ask_full_flow_against_stub(stub_server, tmp_path):
     # the model went through the profile endpoint instead
     assert stub_server.profile_bodies[0]["agent_config"]["model"] == \
         kimi_server.DEFAULT_MODEL
-    # prompt body: content is an array of typed parts
-    assert stub_server.prompt_bodies[0] == {
-        "content": [{"type": "text", "text": "the question"}]}
+    # prompt body: content is an array of typed parts + searcher-only tools
+    # (D-19): coding-agent tools disabled, web tools left enabled
+    prompt_body = stub_server.prompt_bodies[0]
+    assert prompt_body["content"] == [{"type": "text",
+                                       "text": "the question"}]
+    disabled = prompt_body["disabled_tools"]
+    assert "Bash" in disabled and "Write" in disabled
+    assert "Read" in disabled and "Edit" in disabled
+    assert "Grep" in disabled and "Glob" in disabled
+    assert "WebSearch" not in disabled and "FetchURL" not in disabled
+    assert disabled == list(kimi_server.SEARCHER_DISABLED_TOOLS)
+    assert res["disabled_tools"] == list(kimi_server.SEARCHER_DISABLED_TOOLS)
 
     # not owned -> shutdown must not touch the (still alive) server
     lane.shutdown()
@@ -403,10 +486,97 @@ def test_ask_full_flow_against_stub(stub_server, tmp_path):
     assert stub_server.aborted is True
 
 
-def test_missing_token_clear_error(tmp_path):
+def _stub_lane(stub_server, tmp_path):
+    token_file = tmp_path / "server.token"
+    token_file.write_text("stub-token-12345678\n", encoding="utf-8")
+    return kimi_server.KimiServerLane(
+        base_url=f"http://127.0.0.1:{stub_server.server_port}",
+        token_path=token_file)
+
+
+def test_ask_quota_exhausted_via_http_403(stub_server, tmp_path):
+    # D-18: the live quota failure shape (403 provider.api_error / usage
+    # limit) is classified, not mistaken for an unverified-evidence record
+    stub_server.fail_prompts_with = (
+        403, {"code": 40301, "msg": "provider.api_error: usage limit "
+                                    "reached for today"})
+    ask_cwd = tmp_path / "research-cwd"
+    ask_cwd.mkdir()
+    res = _stub_lane(stub_server, tmp_path).ask(
+        "the question", cwd=ask_cwd, timeout_s=30)
+
+    assert res["provider_health"] == "QUOTA_EXHAUSTED"
+    assert res["answer"] is None
+    assert "403" in res["error"]
+    assert res["disabled_tools"] == list(kimi_server.SEARCHER_DISABLED_TOOLS)
+    assert stub_server.aborted is True       # session still cleaned up
+
+
+def test_ask_quota_exhausted_via_failed_turn(stub_server, tmp_path):
+    # D-18: a turn that dies with last_turn_reason=failed AND a quota
+    # marker in the transcript is quota exhaustion
+    stub_server.quota_fail_turn = True
+    ask_cwd = tmp_path / "research-cwd"
+    ask_cwd.mkdir()
+    res = _stub_lane(stub_server, tmp_path).ask(
+        "the question", cwd=ask_cwd, timeout_s=30)
+
+    assert res["provider_health"] == "QUOTA_EXHAUSTED"
+    assert res["answer"] is None
+    assert res["last_turn_reason"] == "failed"
+    assert "quota" in res["error"].lower()
+
+
+def test_ask_auth_failure_via_401(stub_server, tmp_path):
+    stub_server.fail_prompts_with = (401, {"code": 40101,
+                                            "msg": "unauthorized"})
+    ask_cwd = tmp_path / "research-cwd"
+    ask_cwd.mkdir()
+    res = _stub_lane(stub_server, tmp_path).ask(
+        "the question", cwd=ask_cwd, timeout_s=30)
+
+    assert res["provider_health"] == "AUTH_FAILED"
+    assert res["answer"] is None
+    assert "401" in res["error"]
+
+
+def test_ask_server_unavailable_when_dead(tmp_path, monkeypatch):
+    # connection refused + no kimi executable to spawn -> the lane must
+    # report SERVER_UNAVAILABLE, not raise (D-18: ask never raises on
+    # classified provider failures)
+    monkeypatch.setattr(kimi_server.KimiServerLane, "_locate_kimi_exe",
+                        lambda self: None)
+    token_file = tmp_path / "server.token"
+    token_file.write_text("stub-token-12345678\n", encoding="utf-8")
+    lane = kimi_server.KimiServerLane(base_url="http://127.0.0.1:9",
+                                       token_path=token_file)
+    res = lane.ask("the question", timeout_s=10)
+    assert res["provider_health"] == "SERVER_UNAVAILABLE"
+    assert res["answer"] is None
+    assert "error" in res and res["error"]
+
+
+def test_api_connection_refused_is_server_unavailable(tmp_path):
+    # the _api layer itself classifies URLError as SERVER_UNAVAILABLE
+    srv = _KimiStub()
+    port = srv.server_address[1]
+    srv.server_close()          # bind a port, then never listen on it
+    token_file = tmp_path / "server.token"
+    token_file.write_text("stub-token-12345678\n", encoding="utf-8")
+    lane = kimi_server.KimiServerLane(base_url=f"http://127.0.0.1:{port}",
+                                       token_path=token_file)
+    with pytest.raises(kimi_server.KimiProviderError) as ei:
+        lane._api("GET", "/api/v1/sessions")
+    assert ei.value.provider_health == "SERVER_UNAVAILABLE"
+
+
+def test_missing_token_is_auth_failure(tmp_path):
     lane = kimi_server.KimiServerLane(token_path=tmp_path / "nope.token")
     with pytest.raises(kimi_server.KimiError, match="token"):
         lane.token()
+    with pytest.raises(kimi_server.KimiProviderError) as ei:
+        lane.token()
+    assert ei.value.provider_health == "AUTH_FAILED"
     assert lane.token_fingerprint() is None
 
 
@@ -433,7 +603,12 @@ def test_live_kimi_ask():
         assert res["last_turn_reason"] in (
             "completed", "cancelled", "failed", "timeout")
         assert res["prompt_body_shape"] == "content:array_of_typed_parts"
+        # D-18: provider health is always reported, never guessed
+        assert res["provider_health"] in kimi_server.PROVIDER_HEALTHS
+        # D-19: the session ran as a searcher
+        assert res["disabled_tools"] == list(kimi_server.SEARCHER_DISABLED_TOOLS)
         if res["last_turn_reason"] == "completed":
+            assert res["provider_health"] == "OK"
             assert res["answer"].strip() == "OK"
         # raw messages always redacted + content-addressed
         assert res["raw_messages_ref"] == sha256(

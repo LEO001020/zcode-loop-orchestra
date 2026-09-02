@@ -1,6 +1,6 @@
 # zloop CLI — quick reference (v0.2)
 
-> One page, every command. Verified against `src/zloop/cli.py` (snapshot 2026-09-02 round 2).
+> One page, every command. Verified against `src/zloop/cli.py` (snapshot 2026-09-02 round 3: `stage begin/status/close`, `wave propose/start/cancel`, `research run` are now registered in the parser).
 > Commands marked **[wiring in progress]** are being added by a parallel agent this round and are **not yet in the code** — check `zloop --help` before relying on them (no-fake-success).
 > Detailed operational semantics: `docs/OPERATIONS.md` §8.
 
@@ -53,18 +53,33 @@
 | `zloop uninstall [--config-path PATH]` | remove ONLY the zloop-managed `hooks` key (foreign hooks refused, data root untouched) | 0 |
 | `zloop verify-run [RID]` | goal-completion check: run exists and is CLOSED. Default RID = latest run. Upgrade (stages/promotions fully landed) **[wiring in progress]** | 0 / 5 / 3 |
 
-## v0.2 additions — [wiring in progress this round]
+## v0.2 additions
 
-Not yet present in code at snapshot time; contract per VOL-08/VOL-09/VOL-15:
+Landed in the parser this round (still verify with `zloop --help` — no-fake-success); contract per VOL-08/VOL-09/VOL-15:
 
-| Command | Effect |
-|---|---|
-| `zloop stage begin <objective-slice> [--risk R]` | create stage; deterministic risk floor, clean-base gate (I37), locked base ref/tree |
-| `zloop stage status [RID]` / `zloop stage close` | stage row / FSM terminal state |
-| `zloop wave propose` | host-side final ruling on a wave proposal (DAG, disjoint write_scope or explicit `depends_on`, risk ≥ floor, network policy shape) |
-| `zloop wave start` | launch wave: fresh launch_id + workspace per packet (I34); results fenced by I6. **FOREGROUND** for ≤600 s; longer waves: start + end turn + wait for notification (D-2) |
-| `zloop wave cancel` | writes `cancel_requested` (D-8 command input, NOT a lifecycle transition; the owner performs the transition on its next tick) |
-| `zloop research run <query>` | Research Broker lane (Kimi K1 single lane, D-10) |
+| Command | Effect | Codes |
+|---|---|---|
+| `zloop stage begin <objective-slice> [--risk R]` | create stage; deterministic risk floor, clean-base gate (I37), locked base ref/tree | 0 / 5 / 3 |
+| `zloop stage status [RID]` / `zloop stage close` | stage row / FSM terminal state | 0 / 5 / 3 |
+| `zloop wave propose` | host-side final ruling on a wave proposal (DAG, disjoint write_scope or explicit `depends_on`, risk ≥ floor, network policy shape) | 0 / 5 / 3 |
+| `zloop wave start` | launch wave: fresh launch_id + workspace per packet (I34); results fenced by I6. **FOREGROUND** for ≤600 s; longer waves: start + end turn + wait for notification (D-2). Refuses while the Kimi loopback server is up (D-17) | 0 / 5 / 3 |
+| `zloop wave cancel` | writes `cancel_requested` (D-8 command input, NOT a lifecycle transition; the owner performs the transition on its next tick) | 0 / 5 / 3 |
+| `zloop research run <query>` | Research Broker lane (Kimi K1 single lane, D-10); output fields below | 0 / 5 / 3 |
+
+**[wiring in progress this round]** (promote.py library layer implemented + tested; CLI subcommand being wired):
+
+| Command | Effect | Codes |
+|---|---|---|
+| `zloop stage promote SID [--skip-c2c]` | CAS + ff-only promotion of a staged commit (I30/I39): intent-first, canonical worktree clean with unchanged dirty digest, HEAD unchanged, staged commit must descend from HEAD; HIGH/CRITICAL stages require a recorded C2C audit unless `--skip-c2c` (explicit, journaled downgrade). **exit 5 reasons:** `DIRTY_OR_DRIFT` / `HEAD_DRIFT` / `NOT_DESCENDANT` / `c2c_gate_required` / `nothing_materialized` / `staging_missing` | 0 / 5 / 3 |
+
+### Research output fields — D-18 three-axis semantics
+
+`zloop research run` results carry two independent axes (plus the pre-existing `verification`/`trust` evidence axis); **never collapse them**:
+
+- `provider_health` — the LANE/PROVIDER state, not the evidence: `OK` / `QUOTA_EXHAUSTED` / `AUTH_FAILED` / `SERVER_UNAVAILABLE` / `ERROR`
+- `retrieval_outcome` — what was actually obtained: `EVIDENCE_FOUND` / `NO_EVIDENCE`
+
+Quota ⇒ `provider_health=QUOTA_EXHAUSTED` **and** `retrieval_outcome=NO_EVIDENCE` — never `source_unverified` (that would assert evidence exists with provenance merely pending). The research session is a **searcher, not a second execution agent** (D-19): coding-agent tools (Read/Write/Edit/Bash/Grep/Glob) are disabled at prompt submit; WebSearch/FetchURL only.
 
 ## Standing rules
 

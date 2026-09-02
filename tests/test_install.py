@@ -159,3 +159,61 @@ def test_install_over_empty_hooks_ok_and_no_home_write(tmp_path: Path):
     zi.install_hooks(CMD, ARGS, config_path=tmp_path / "cli" / "c2.json")
     after = real.exists() and real.stat().st_mtime_ns
     assert before == after
+
+
+# ---- plugin emission (D-16: plugin-scope is the production target) -----------
+
+EXE = r"C:\abs\python.exe"
+
+
+def test_emit_plugin_tree(tmp_path: Path):
+    dest = tmp_path / "plugin"
+    r = zi.emit_plugin(dest, EXE)
+    assert r["ok"] is True
+    assert r["events"] == 5
+    assert r["dest"] == str(dest)
+
+    # .zcode-plugin/plugin.json — manifest
+    pj = json.loads((dest / ".zcode-plugin" / "plugin.json")
+                    .read_text(encoding="utf-8"))
+    assert pj["name"] == "zloop"
+    assert pj["version"] == "0.1.0"
+    assert pj["hooks"] == "hooks/hooks.json"
+    assert "post-execution events" in pj["description"]
+
+    # hooks/hooks.json — the same 5 post-execution events, process type,
+    # command templated on ${ZCODE_PLUGIN_ROOT} so the tree is relocatable
+    hj = json.loads((dest / "hooks" / "hooks.json").read_text(encoding="utf-8"))
+    assert list(hj) == ["hooks"]
+    assert list(hj["hooks"]) == zi.REGISTERED_EVENTS
+    assert set(hj["hooks"]) == set(zi.REGISTERED_EVENTS)
+    for matchers in hj["hooks"].values():
+        assert matchers == [{"hooks": [{"type": "process",
+                                         "command": r"${ZCODE_PLUGIN_ROOT}\zloop-hook.cmd",
+                                         "args": ["handle"],
+                                         "timeoutMs": 8000}]}]
+
+    # zloop-hook.cmd — runs the recorded interpreter with the hook module
+    cmd = (dest / "zloop-hook.cmd").read_text(encoding="utf-8")
+    assert f'"{EXE}" -m zloop.hook' in cmd
+
+
+def test_emit_plugin_overwrites_and_resolves_relative_python(tmp_path: Path,
+                                                              monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    dest = tmp_path / "plugin"
+    r1 = zi.emit_plugin(dest, "some/other/python.exe")
+    assert r1["ok"] is True
+    cmd1 = (dest / "zloop-hook.cmd").read_text(encoding="utf-8")
+    # relative interpreter path -> resolved to an absolute one
+    assert f'"{Path("some/other/python.exe").resolve()}" -m zloop.hook' in cmd1
+
+    # re-running overwrites cleanly (same tree, new interpreter)
+    r2 = zi.emit_plugin(dest, EXE)
+    assert r2["ok"] is True and r2["events"] == 5
+    cmd2 = (dest / "zloop-hook.cmd").read_text(encoding="utf-8")
+    assert f'"{EXE}" -m zloop.hook' in cmd2
+    assert "some" not in cmd2
+    # and the JSON payload is unchanged valid JSON
+    hj = json.loads((dest / "hooks" / "hooks.json").read_text(encoding="utf-8"))
+    assert list(hj["hooks"]) == zi.REGISTERED_EVENTS

@@ -1,8 +1,10 @@
-"""Supervisor tests (M6): controller ownership (D-8), DAG launch order,
-materialization, mid-run cancel (VOL-09 §8), I6 fencing, worker failure."""
+"""Supervisor tests (M6): controller ownership (D-8/D-20), the kimi-server
+gate (D-17), DAG launch order, materialization, mid-run cancel (VOL-09
+§8), I6 fencing, worker failure."""
 from __future__ import annotations
 
 import json
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -278,25 +280,91 @@ def test_stale_result_fence_leaves_packet_running(store, env):
     assert store.controller(run_id)["controller_nonce"] is None
 
 
-# ---- controller busy (D-8, I5) -----------------------------------------------
+# ---- controller ownership (D-8/D-20, I5) --------------------------------------
 
 
-def test_controller_busy_never_wrestles(store, env):
+def test_controller_busy_live_owner_never_wrestles(store, env):
     run_id, sid = _executing_stage(store, env)
     other = zids.new_nonce()
-    assert store.claim_controller(run_id, nonce=other, pid=4242,
-                                  pid_start="hint")
+    own_start = zdb.process_start_time(os.getpid())
+    assert own_start  # real process identity (D-20), not a hint
+    assert store.claim_controller(run_id, nonce=other, pid=os.getpid(),
+                                  pid_start=own_start)
     res = _run(store, env, run_id, sid,
                [_packet("P01", ["src/a/**"])], zwave.MockBackend())
-    assert res["ok"] is False and res["reason"] == "controller_busy"
+    # the owner is mechanically ALIVE: refusal names it (D-20), and the
+    # supervisor never wrestles the token away (I5)
+    assert res["ok"] is False and res["reason"] == "owner_alive"
     # nothing touched: no packets, no wave events, no workspaces
     assert _rows(store, run_id, sid) == {}
     assert _events(store, "wave_started") == []
     assert not (env.workspaces_root / sid).exists()
-    # the other controller keeps the token (I5: never wrestle)
+    # the live owner keeps the token
     ctrl = store.controller(run_id)
     assert ctrl["controller_nonce"] == other
-    assert ctrl["controller_pid"] == 4242
+    assert ctrl["controller_pid"] == os.getpid()
+
+
+def test_controller_ambiguous_owner_fails_closed(store, env):
+    run_id, sid = _executing_stage(store, env)
+    # a claim whose probe-based start could not be recorded (pid_start=None):
+    # death can never be proven, so the takeover must fail closed (I43)
+    other = zids.new_nonce()
+    assert store.claim_controller(run_id, nonce=other, pid=os.getpid(),
+                                  pid_start=None)
+    res = _run(store, env, run_id, sid,
+               [_packet("P01", ["src/a/**"])], zwave.MockBackend())
+    assert res["ok"] is False and res["reason"] == "ambiguous_fail_closed"
+    assert _rows(store, run_id, sid) == {}
+    assert _events(store, "wave_started") == []
+    assert store.controller(run_id)["controller_nonce"] == other
+
+
+def test_dead_owner_takeover_allows_wave(store, env):
+    run_id, sid = _executing_stage(store, env)
+    old = zids.new_nonce()
+    proc = subprocess.Popen(
+        [sys.executable, "-c", "import time; time.sleep(30)"],
+        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    try:
+        start = zdb.process_start_time(proc.pid)
+        assert start
+        assert store.claim_controller(run_id, nonce=old, pid=proc.pid,
+                                      pid_start=start)
+        proc.kill()
+        proc.wait(timeout=15)
+    finally:
+        if proc.poll() is None:
+            proc.kill()
+            proc.wait()
+    # the old owner is mechanically dead: run_wave takes over (D-20) and
+    # supervises the wave normally
+    backend = WorkspaceBackend(env.git_root,
+                               {"P01": [("src/a/mod.py", "a = 1\n")]})
+    res = _run(store, env, run_id, sid,
+               [_packet("P01", ["src/a/**"])], backend)
+    assert res["ok"] is True
+    assert res["materialized"] == ["P01"]
+    assert store.controller(run_id)["controller_nonce"] is None  # released
+
+
+# ---- kimi-server gate (D-17/P-SEC1) --------------------------------------------
+
+
+def test_kimi_server_up_blocks_wave_before_claim(store, env, monkeypatch):
+    monkeypatch.setattr(zsup, "kimi_server_up", lambda timeout_s=1.0: True)
+    run_id, sid = _executing_stage(store, env)
+    res = _run(store, env, run_id, sid,
+               [_packet("P01", ["src/a/**"])], zwave.MockBackend())
+    assert res["ok"] is False and res["reason"] == "KIMI_SERVER_UP"
+    assert res["detail"] == ("loopback escalation path open (P-SEC1/D-17): "
+                             "stop kimi web before running worker waves")
+    # refused before claiming: nothing touched, no controller token taken
+    assert _rows(store, run_id, sid) == {}
+    assert _events(store, "wave_started") == []
+    assert _events(store, "controller_claimed") == []
+    assert not (env.workspaces_root / sid).exists()
+    assert store.controller(run_id)["controller_nonce"] is None
 
 
 # ---- validation errors are returned, not raised ------------------------------

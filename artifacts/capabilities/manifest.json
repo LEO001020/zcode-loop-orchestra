@@ -3,8 +3,23 @@
   "description": "Machine-readable probe status registry for ZLoop M0 (VOL-20 probe catalog). Human-readable companion: docs/VENDOR_CONTRACTS.md. Spec basis: E:\\zcode\\zloop-spec (VOL-02, VOL-20, DECISIONS.md).",
   "generated_at": "2026-09-02",
   "spec_library": "E:\\zcode\\zloop-spec",
-  "milestone": "M0 done; M1 deployed (5 hooks); M2/M3 core; M4 research (Kimi K1 live-verified, D-10); M5 c2c host-side; M6 materialize+promote+supervisor with D-8 controller token in code; M7 backend code landed (live test blocked on codex login). 193 tests green. Round 2: 2026-09-02.",
+  "milestone": "Implementation coverage ~M7; validated capability ~M3+M6_mock+Kimi_K1+P-CDX1(route). M7 real-workload gate now BLOCKED on read/loopback isolation (P-SEC1 FAIL, D-17 mitigation + OS-boundary requirement). Ledger terminology corrected per third-party audit.",
   "m0_exit_criteria_ref": "E:\\zcode\\zloop-spec\\VOL-20-M0-PROBES.md#6 (six items, not yet all met)",
+  "status_ledger": {
+    "as_of": "2026-09-02 (round 3; two-table honest ledger per third-party audit — implementation coverage vs validated capability)",
+    "implementation_coverage": "~M0-M7 code surface exists. Tests: 193 passed / 2 skipped at the round-2 snapshot (spec PROGRESS.md); round-3 parallel agents adding more (this doc agent executed no suites — green/red per suite owners).",
+    "production_candidate": "NO",
+    "capabilities": {
+      "architecture": "CONDITIONAL_GREEN — unit coverage + two audit closures; condition = all RED/YELLOW items below closed out",
+      "h0_binding_sqlite": "UNIT_GREEN / LIVE_YELLOW — live validation (P-HK1-HK4 / P-BIND1 / P-PLAT1) requires a new ZCode session (no headless CLI)",
+      "kimi_k1": "LIVE_VERIFIED_CONTRACT (P-KIM1 K1 full chain PASS); provider currently quota-degraded (auto-resets); K2 dropped (D-10)",
+      "luna": "RED — membership route untested; cliproxy route exposes provider-side web_search; P-LUNA redefinition pending",
+      "codex_sdk_route": "LIVE_VERIFIED_SINGLE_TURN (P-CDX1) + public egress blocked, BUT P-SEC1 FAIL: unrestricted filesystem reads + reachable loopback -> external workers = trusted-content only until OS boundary (D-17)",
+      "c2c": "HOST_PROTOCOL_GREEN; browser E2E unvalidated (P-C2C1 PENDING)",
+      "gcog": "RED — highest priority; P-GC1 BLOCKED-requires-new-session",
+      "m8_m9_m10": "NOT_RUN"
+    }
+  },
   "status_legend": {
     "PASS": "probe executed and passed",
     "PARTIAL": "partially executed; remaining steps documented in notes",
@@ -151,13 +166,13 @@
     {
       "probe_id": "P-CDX2",
       "question": "Strict worker dual hard gates: [agents].enabled=false removes spawn_agent family from tool catalog; network canaries (public + loopback/private) rejected",
-      "status": "PASS",
+      "status": "DEGRADED",
       "executed_at": "2026-09-02T15:30:00Z",
       "evidence_refs": [
         "artifacts/probes/P-CDX2.json"
       ],
       "fallback_triggered": null,
-      "notes": "Public network canary BLOCKED under workspace_write (000/exit 1) => I29 holds on this route. agents.enabled=false removes spawn_agent family from self-reported catalog (strict stream enumeration at M7). Loopback canary inconclusive as-run (no listener on :9). Catalog includes provider-hosted web_search."
+      "notes": "REVISED after P-SEC1: public egress blocked (PASS), nested-agent family absent (self-report; strict enumeration pending), but loopback REACHABLE and filesystem reads UNRESTRICTED. Original PASS downgraded."
     },
     {
       "probe_id": "P-CDX3",
@@ -261,6 +276,17 @@
       "evidence_refs": [],
       "fallback_triggered": null,
       "notes": "Not dispatched as of 2026-09-02. Browser is root/main-agent-only (Windows: no Chrome login import); scheduled after hook capture (H0) exists for the record chain."
+    },
+    {
+      "probe_id": "P-SEC1",
+      "question": "Codex worker filesystem read isolation + loopback isolation (adversarial sentinels)",
+      "status": "FAIL",
+      "executed_at": "2026-09-02T16:05:00Z",
+      "evidence_refs": [
+        "artifacts/probes/P-SEC1.json"
+      ],
+      "fallback_triggered": "D-17: kimi-server gate in supervisor; M7 real-workload gate = OS identity boundary (pending)",
+      "notes": "Both filesystem sentinels READ verbatim; loopback canary fetched. Public egress blocked but 127.0.0.1 reachable. workspace_write restricts writes only."
     }
   ],
   "decisions": [
@@ -347,13 +373,56 @@
       "date": "2026-09-02",
       "source": "razor audit + probes",
       "summary": "Deleted: worker-host-per-launch, client sharding, controller_epochs-as-ownership, persisted H1.machine. Deferred: batch/bisect/oracle-cache, per-launch Job Objects, AppServerBackend. Derived: attempt ordinal from launches."
+    },
+    {
+      "id": "D-16",
+      "title": "Hook deployment: plugin-scope is the production target",
+      "date": "2026-09-02",
+      "source": "third audit",
+      "summary": "User-global hooks tax unrelated workspaces and defeat plugin-disable semantics; user-config install stays only as compat fallback; hook gains strict cwd-based project scoping (no cross-workspace journaling)."
+    },
+    {
+      "id": "D-17",
+      "title": "P-SEC1 read/loopback isolation FAIL: kimi-server gate + OS-boundary requirement",
+      "date": "2026-09-02",
+      "source": "sentinel probe (first-hand)",
+      "summary": "workspace_write reads unrestricted + loopback reachable => supervisor refuses waves while Kimi server is up; Codex workers restricted to trusted-content workloads until a dedicated low-privilege OS identity exists."
+    },
+    {
+      "id": "D-18",
+      "title": "Research three-axis semantics",
+      "date": "2026-09-02",
+      "source": "third audit",
+      "summary": "ProviderHealth != RetrievalOutcome != EvidenceTrust; quota => provider_health=QUOTA_EXHAUSTED + retrieval_outcome=NO_EVIDENCE (never source_unverified)."
+    },
+    {
+      "id": "D-19",
+      "title": "Kimi research session = searcher only",
+      "date": "2026-09-02",
+      "source": "third audit",
+      "summary": "disabled_tools at prompt submit removes Read/Write/Edit/Bash/Grep/Glob; WebSearch/FetchURL only."
+    },
+    {
+      "id": "D-20",
+      "title": "D-8 death proof implemented (takeover_controller)",
+      "date": "2026-09-02",
+      "source": "third audit",
+      "summary": "Takeover requires mechanical (pid,process_start_time) liveness proof; ambiguous => refuse (fail-closed, I43)."
+    },
+    {
+      "id": "D-21",
+      "title": "Redact refinement: credential-shaped adjacency, not bare 'key'",
+      "date": "2026-09-02",
+      "source": "third audit",
+      "summary": "api/access/private+key adjacency redacts; primary_key/cache_key/public_key_id preserved; plus Kimi-token sentinel regression test."
     }
   ],
   "next_actions": [
-    "User: nothing to do for Codex anymore (opencodex/cliproxy route live-verified). Optional: restore ChatGPT-membership route only if that route is wanted later.",
-    "User: open a NEW ZCode session (hooks now installed, 5 events) and run the first-session checklist in docs/OPERATIONS.md section 7; that session also unlocks P-HK1/HK2/HK3/HK4/P-BIND1/P-GC1/P-PLAT1.",
-    "User: confirm removal of C:\\ProgramData\\OpenAI\\Codex\requirements.toml (backed up; sha256 6c0f4f7b...).",
-    "Dev: apply D-8 controller-token redesign in code when the supervisor is built (M6); drop the attempts table in v1.1.",
-    "Dev: profile T_host_acceptance/T_trusted before considering VOL-10 section 5 batching."
+    "GLM self-fixes this round (in flight, no user action): hook project-scoping + plugin packaging (D-16); D-20 takeover death proof; research three-axis semantics (D-18) + searcher-only tools (D-19); zloop stage promote CLI; redact precision (D-21).",
+    "User (optional but recommended): safely disable C:\\ProgramData\\OpenAI\\Codex\\requirements.toml via the rename-first procedure (backup exists at ~/.zloop/hygiene-backup/, sha256 6c0f4f7b...; then verify no old-LOOP interception with a clean Codex headless turn in a temp cwd). NOT needed for the new route (workers carry CODEX_LOOP_REQUIREMENTS_TOML override, D-5) but removes a confounder. See docs/OPERATIONS.md section 6.",
+    "User: open a NEW ZCode session -> P-HK group + P-BIND1 (first-session checklist in docs/OPERATIONS.md section 7), G-COG with MOCK waves (three serial->parallel->serial cycles; runs without any login; highest-priority probe), and C2C E2E via Browser (P-C2C1).",
+    "Codex route is already live (D-14) — no login action needed. Next P-CDX steps gated on D-17 mitigation discipline: never run kimi web during worker waves; OS-boundary required before real (non-trusted-content) workloads.",
+    "No user action: Kimi quota auto-resets; Luna probe redefinition pending.",
+    "Then M8 -> M9 (native-vs-external comparison arm) -> M10 (context-quality arms) per spec VOL-19."
   ]
 }

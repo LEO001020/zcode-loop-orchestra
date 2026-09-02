@@ -7,12 +7,16 @@ I4:  S commit failure stops lifecycle mutation — callers map SError to
      fail-closed behaviour (CLI exit 3), never guess.
 I32: binding is claimed via one-time nonce, never cwd/latest-run guessing.
 I43: single controller = OS run lock + controller_epoch (TTL is hygiene only).
+D-20: takeover_controller demands a mechanical (pid, pid_start) liveness
+      proof of the recorded owner BEFORE any takeover CAS — pid absent or
+      start mismatch = dead (PID reuse), undecidable = refuse (I43).
 """
 from __future__ import annotations
 
 import json
 import os
 import sqlite3
+import subprocess
 from contextlib import contextmanager
 from pathlib import Path
 from typing import Any, Optional
@@ -240,6 +244,80 @@ class RunLock:
         self.release()
 
 
+# ---- process identity probes (D-20) ------------------------------------------
+#
+# Death proof for a D-8 takeover: the recorded owner (pid, pid_start) is only
+# mechanically dead when the OS says so. Probes run through powershell
+# (Windows is the production target); ANY probe failure is ambiguous, never
+# "dead" — callers fail closed (I43).
+
+_PS_TIMEOUT_S = 15.0
+
+
+def _ps_probe(command: str, timeout_s: float = _PS_TIMEOUT_S) -> Optional[str]:
+    """Run one powershell probe; return stripped stdout, or None on ANY
+    failure (nonzero exit, timeout, missing executable). Never raises.
+
+    Locale-proof: decode with errors="replace" so a localized (non-UTF-8)
+    powershell message can never crash a capture reader thread — probe
+    output we match on is ASCII ('o' timestamps, ZLOOP_PRESENT/ABSENT).
+    """
+    try:
+        proc = subprocess.run(
+            ["powershell", "-NoProfile", "-Command", command],
+            capture_output=True, text=True, encoding="utf-8",
+            errors="replace", timeout=timeout_s)
+    except Exception:
+        return None
+    if proc.returncode != 0:
+        return None
+    return (proc.stdout or "").strip() or None
+
+
+def process_start_time(pid: int) -> Optional[str]:
+    """D-20: the REAL creation time of pid as ISO 8601 ('o' round-trip
+    format), or None on ANY failure (process absent, access denied, probe
+    failure). This is a mechanical process identity, never a wall-clock
+    guess: recording it at claim time is what makes a later takeover's
+    death proof sound."""
+    try:
+        pid = int(pid)
+    except (TypeError, ValueError):
+        return None
+    if pid <= 0:
+        return None
+    return _ps_probe(f"(Get-Process -Id {pid}).StartTime.ToString('o')")
+
+
+def owner_alive(pid: Optional[int], pid_start: Optional[str]) -> Optional[bool]:
+    """D-20: mechanical liveness proof for a recorded controller owner.
+
+    True  — pid exists AND its real start time equals pid_start (alive);
+    False — pid absent (dead), or start mismatch (the PID was reused after
+            the recorded owner died: old owner is dead);
+    None  — ambiguous (no recorded start, or the probe cannot decide);
+            callers MUST fail closed (I43)."""
+    if pid is None or pid_start is None:
+        return None  # no recorded identity to prove against: ambiguous
+    try:
+        pid = int(pid)
+    except (TypeError, ValueError):
+        return None
+    if pid <= 0:
+        return None
+    present = _ps_probe(
+        f"if (Get-Process -Id {pid} -ErrorAction SilentlyContinue) "
+        f"{{ 'ZLOOP_PRESENT' }} else {{ 'ZLOOP_ABSENT' }}")
+    if present is None:
+        return None  # probe failed: existence undecidable
+    if present != "ZLOOP_PRESENT":
+        return False  # process absent: mechanically dead
+    start = process_start_time(pid)
+    if start is None:
+        return None  # present but start unreadable: comparison impossible
+    return start == pid_start  # equal -> alive; mismatch -> PID reuse
+
+
 class ControlStore:
     """High-level S operations. All mutations go through self.mutation()."""
 
@@ -434,6 +512,48 @@ class ControlStore:
                        run_id=run_id)
         return True
 
+    def takeover_controller(self, run_id: str, *, nonce: Optional[str] = None,
+                            pid: Optional[int] = None,
+                            pid_start: Optional[str] = None,
+                            expected_old: str) -> dict:
+        """D-20 death-proof takeover of a run's controller token.
+
+        Reads the current controller row; a free run (no old nonce) is
+        claimed directly (fresh-claim-only semantics, unchanged). Otherwise
+        the recorded owner must be mechanically proven dead via
+        ``owner_alive(old_pid, old_pid_start)`` BEFORE any CAS:
+        alive -> refuse ({"ok": False, "reason": "owner_alive"}); ambiguous
+        -> refuse ({"ok": False, "reason": "ambiguous_fail_closed"}, I43);
+        dead -> CAS claim against ``expected_old`` (guards the probe/claim
+        race). Never guesses (I5/I43).
+
+        Returns {"ok": True, "nonce", "takeover"} or
+        {"ok": False, "reason": "unknown_run" | "owner_alive" |
+         "ambiguous_fail_closed" | "cas_failed"}.
+        """
+        nonce = nonce or ids.new_nonce()
+        row = self.controller(run_id)
+        if row is None:
+            return {"ok": False, "reason": "unknown_run"}
+        old = row.get("controller_nonce")
+        if old is None:
+            if self.claim_controller(run_id, nonce=nonce, pid=pid,
+                                     pid_start=pid_start):
+                return {"ok": True, "nonce": nonce, "takeover": False}
+            return {"ok": False, "reason": "cas_failed"}
+        alive = owner_alive(row.get("controller_pid"),
+                            row.get("controller_pid_start"))
+        if alive is True:
+            return {"ok": False, "reason": "owner_alive"}
+        if alive is None:
+            return {"ok": False, "reason": "ambiguous_fail_closed"}
+        # alive is False: recorded owner mechanically proven dead -> CAS
+        # against the nonce we inspected (a concurrent claim breaks it).
+        if self.claim_controller(run_id, nonce=nonce, pid=pid,
+                                 pid_start=pid_start, expected_old=expected_old):
+            return {"ok": True, "nonce": nonce, "takeover": True}
+        return {"ok": False, "reason": "cas_failed"}
+
     def release_controller(self, run_id: str, nonce: str) -> bool:
         with self.mutation():
             cur = self.conn.execute(
@@ -484,7 +604,6 @@ def register_project_from_git(git_root: Optional[Path] = None,
                               display_name: str = "") -> dict:
     """Register (or resolve) the project for a git root. Never guesses by cwd
     for binding purposes — this is explicit project attach only."""
-    import subprocess
     root = Path(git_root or Path.cwd()).resolve()
     try:
         top = subprocess.run(["git", "rev-parse", "--show-toplevel"], cwd=str(root),

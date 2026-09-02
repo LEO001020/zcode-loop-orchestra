@@ -11,10 +11,20 @@ exception escape. The ONLY stdout outputs are the two documented JSON lines:
 Everything else is a silent no-op. Capture goes through the H0 journal
 (VOL-06, via ``evidence.Journal``); binding is claimed only through the
 one-time nonce protocol (I32) — never by cwd / latest-run guessing.
+
+D-16 strict project scoping: capture and bind-token claim proceed ONLY
+when the event's ``cwd`` lies inside a registered project's git_root
+(``resolve_project_for_cwd``). A session already bound to that project
+counts too (its run/stage ride along); anything else — including the old
+"single registered project" fallback — journals nothing and stays silent,
+so prompts/tool results from unrelated workspaces never leak into a
+project's H0. SessionStart recovery is exempt: it works off the exact
+session binding regardless of cwd.
 """
 from __future__ import annotations
 
 import json
+import os
 import re
 import sys
 from pathlib import Path
@@ -69,14 +79,16 @@ def _dispatch(event: dict, raw_line: str) -> None:
     if not isinstance(session_id, str) or not session_id:
         return
     name = event.get("hook_event_name")
+    cwd = event.get("cwd")  # D-16: strict project scoping rides on this field
     if name == "PostToolUse":
-        _handle_post_tool_use(event, session_id, raw_line)
+        _handle_post_tool_use(event, session_id, raw_line, cwd)
         return
     kind, payload, tool = _map_event(name, event)
     if kind is not None:
-        _capture(name, kind, session_id, payload, tool)
+        _capture(name, kind, session_id, payload, tool, cwd)
     if name == "SessionStart":
-        # recovery is a separate, fault-isolated branch (VOL-06 §5)
+        # recovery is a separate, fault-isolated branch (VOL-06 §5) and
+        # works off the exact session binding regardless of cwd (D-16)
         _recovery(session_id, event.get("source"))
 
 
@@ -101,7 +113,8 @@ def _map_event(name: Any, event: dict):
 
 # ---- capture branch (VOL-05 §3, VOL-06 §1) ---------------------------------
 
-def _handle_post_tool_use(event: dict, session_id: str, raw_line: str) -> None:
+def _handle_post_tool_use(event: dict, session_id: str, raw_line: str,
+                          cwd: Any) -> None:
     tool_name = event.get("tool_name")
     tool_input = event.get("tool_input")
     tool_response = event.get("tool_response")
@@ -109,10 +122,10 @@ def _handle_post_tool_use(event: dict, session_id: str, raw_line: str) -> None:
         return  # recursion guard: no journaling, no claim parsing
     # claim runs before capture so the binding event itself lands in the
     # journal of the (newly) bound project
-    _try_claim(tool_name, tool_response, session_id, raw_line)
+    _try_claim(tool_name, tool_response, session_id, raw_line, cwd)
     _capture("PostToolUse", "tool_result", session_id,
              {"tool_name": tool_name, "tool_input": tool_input,
-              "tool_response": tool_response}, tool=tool_name)
+              "tool_response": tool_response}, tool=tool_name, cwd=cwd)
 
 
 def _is_self_read(tool_input: Any) -> bool:
@@ -126,9 +139,9 @@ def _is_self_read(tool_input: Any) -> bool:
 
 
 def _capture(event_name: str, kind: str, session_id: str, payload: Any,
-             tool: Optional[str] = None) -> None:
+             tool: Optional[str] = None, cwd: Any = None) -> None:
     try:
-        project_id, run_id, stage_id = _resolve_capture_project(session_id)
+        project_id, run_id, stage_id = _resolve_capture_project(session_id, cwd)
         if project_id is None:
             return
         journal = zev.Journal(paths.history_session_file(project_id, session_id),
@@ -139,19 +152,61 @@ def _capture(event_name: str, kind: str, session_id: str, payload: Any,
         pass  # H0 is fail-soft (I3): capture must never break a native turn
 
 
-def _resolve_capture_project(session_id: str) -> Tuple[Optional[str], Optional[str], Optional[str]]:
-    """Project for capture: the bound project of this session, else the single
-    registered project (fallback), else None (= skip capture silently)."""
+def resolve_project_for_cwd(cwd: str) -> Optional[dict]:
+    """Registered project whose git_root is an ancestor-or-equal of cwd.
+
+    D-16 strict scoping — the only cwd-based resolution left in the hook.
+    Both sides are normalized with Path.resolve() and compared
+    case-insensitively (os.path.normcase); the ancestor check is
+    ``is_relative_to``. Returns the registry record plus ``project_id``,
+    or None when cwd lies outside every registered project (and for
+    missing/invalid cwd). Never raises.
+    """
+    if not isinstance(cwd, str) or not cwd:
+        return None
+    try:
+        projects = paths.load_registry().get("projects", {})
+        here = _norm_path(cwd)
+    except Exception:
+        return None
+    for pid, rec in projects.items():
+        if not isinstance(rec, dict):
+            continue
+        root = rec.get("git_root")
+        if not isinstance(root, str) or not root:
+            continue
+        try:
+            root_p = _norm_path(root)
+        except Exception:
+            continue
+        if here.is_relative_to(root_p):
+            out = dict(rec)
+            out["project_id"] = pid
+            return out
+    return None
+
+
+def _norm_path(p: str) -> Path:
+    """Resolved, case-normalized path for comparison (lowercased by
+    os.path.normcase on Windows; identity on case-sensitive filesystems)."""
+    return Path(os.path.normcase(str(Path(p).resolve())))
+
+
+def _resolve_capture_project(session_id: str, cwd: Any) -> Tuple[Optional[str], Optional[str], Optional[str]]:
+    """Project for capture under D-16 strict scoping: the session's bound
+    project when cwd lies inside its git_root, else the registered project
+    containing cwd, else None (= skip capture silently). The former
+    single-registered-project fallback is gone — unrelated workspaces are
+    never journaled."""
+    cwd_hit = resolve_project_for_cwd(cwd)
     hit = _find_binding(session_id)
     if hit is not None:
         pid, binding = hit
-        return pid, binding.get("run_id"), binding.get("stage_id")
-    try:
-        registered = paths.load_registry().get("projects", {})
-    except Exception:
+        if cwd_hit is not None and cwd_hit["project_id"] == pid:
+            return pid, binding.get("run_id"), binding.get("stage_id")
         return None, None, None
-    if len(registered) == 1:
-        return next(iter(registered)), None, None
+    if cwd_hit is not None:
+        return cwd_hit["project_id"], None, None
     return None, None, None
 
 
@@ -184,9 +239,15 @@ def _find_binding(session_id: str) -> Optional[Tuple[str, dict]]:
 # ---- bind-token claim (I32, VOL-05 §4) --------------------------------------
 
 def _try_claim(tool_name: Any, tool_response: Any, session_id: str,
-               raw_line: str) -> None:
+               raw_line: str, cwd: Any) -> None:
     try:
         if tool_name != "Bash":
+            return
+        # D-16: the claim is attempted ONLY for the registered project
+        # containing the hook cwd (the CLI always runs inside the project,
+        # so this is safe); an unrelated workspace never claims/binds.
+        cwd_hit = resolve_project_for_cwd(cwd)
+        if cwd_hit is None:
             return
         try:
             scan_text = json.dumps(tool_response)
@@ -198,31 +259,24 @@ def _try_claim(tool_name: Any, tool_response: Any, session_id: str,
         if m is None:
             return
         nonce = m.group(1)
+        pid = cwd_hit["project_id"]
         binding: Optional[dict] = None
+        conn = None
         try:
-            pids = list(paths.load_registry().get("projects", {}).keys())
+            conn = zdb.connect(paths.project_dir(pid), create=True)
+            store = zdb.ControlStore(paths.project_dir(pid), conn,
+                                     project_id=pid)
+            binding = store.claim_binding(nonce, session_id)
         except Exception:
-            pids = []
-        for pid in pids:
-            conn = None
-            try:
-                conn = zdb.connect(paths.project_dir(pid), create=True)
-                store = zdb.ControlStore(paths.project_dir(pid), conn,
-                                         project_id=pid)
-                b = store.claim_binding(nonce, session_id)
-                if b is not None:  # first successful claim wins
-                    binding = b
-                    break
-            except Exception:
-                continue  # S busy/corrupt -> give up this claim, exit 0
-            finally:
-                if conn is not None:
-                    try:
-                        conn.close()
-                    except Exception:
-                        pass
+            binding = None  # S busy/corrupt -> give up this claim, exit 0
+        finally:
+            if conn is not None:
+                try:
+                    conn.close()
+                except Exception:
+                    pass
         if binding is None:
-            return  # unknown/expired/replayed/forged nonce: stay silent
+            return  # unknown/expired/replayed/forged/cross-project nonce: stay silent
         run = binding.get("run_id") or "attached"
         line = json.dumps(
             {"hookSpecificOutput": {"hookEventName": "PostToolUse",

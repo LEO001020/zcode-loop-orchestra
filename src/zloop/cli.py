@@ -13,8 +13,9 @@ a plane that is not there. The same tolerance covers the still-parallel
 zloop.supervisor (wave start) and zloop.research.broker (research run).
 
 Milestone-4/6 surface (VOL-08 / VOL-09): stage begin/status/close, wave
-propose/start/cancel. run start / stage begin / wave start are FOREGROUND
-commands (keep <600s; long waves belong to the future await path).
+propose/start/cancel. M8 (VOL-11 §2): stage promote. run start / stage begin /
+wave start are FOREGROUND commands (keep <600s; long waves belong to the
+future await path).
 """
 from __future__ import annotations
 
@@ -550,6 +551,8 @@ def cmd_stage(args: argparse.Namespace) -> int:
         return _stage_begin(args, pid, pdir)
     if args.cmd == "status":
         return _stage_status(args, pid, pdir)
+    if args.cmd == "promote":
+        return _stage_promote(args, pid, pdir)
     return _stage_close(args, pid, pdir)
 
 
@@ -633,6 +636,181 @@ def _stage_close(args: argparse.Namespace, pid: str, pdir: Path) -> int:
             except ValueError as e:
                 raise CliError(EXIT_BLOCKED, f"stage close failed: {e}")
             _print_json({**st, "closed_via": hops})
+            return EXIT_OK
+        finally:
+            conn.close()
+
+
+# ---- stage promote (VOL-11 §2, M8) ------------------------------------------
+
+# The packet states that allow promotion (VOL-09 §7): every packet of the
+# stage must have settled, and at least one produced a materialized snapshot.
+_PROMOTE_PACKET_TERMINAL = ("MATERIALIZED", "FAILED", "BLOCKED", "CANCELLED")
+_C2C_GATE_RISK = ("HIGH", "CRITICAL")
+
+
+def _stage_promote(args: argparse.Namespace, pid: str, pdir: Path) -> int:
+    """Promote a fully-materialized stage onto the canonical branch (M8,
+    VOL-11 §2). Narrow command semantics — no PromotionManager:
+
+    every packet of the stage terminal (>= 1 MATERIALIZED) -> EXECUTING
+    moved to STAGED -> HIGH/CRITICAL risk requires a recorded C2C result for
+    this run+stage (VOL-16 §6), waived only by the audited ``--skip-c2c`` ->
+    the staging worktree's HEAD is the staged commit (snapshot identity,
+    D-12; same path convention wave start used) -> the INTENDED promotion
+    intent is written first (VOL-11 §2 intent-first ordering) ->
+    ``promote.promote`` performs the CAS + ff-only checked-out-safe promotion
+    (I30/I39, lazy import — parallel module) and settles the stage as
+    PROMOTED in one S transaction.
+    """
+    promote_mod = _lazy_import("zloop.promote")
+    if promote_mod is None:
+        print(MODULE_UNAVAILABLE)
+        return EXIT_OK
+    materialize = _lazy_import("zloop.materialize")
+    repo = _project_git_root(pid)
+    c2c_waived = False
+    with db.RunLock(pdir):
+        conn = db.connect(pdir, create=True)
+        try:
+            store = db.ControlStore(pdir, conn, project_id=pid)
+            run = _current_run(store)
+            st = stage.get_stage(store, run["run_id"], args.stage_id)
+            if st is None:
+                raise CliError(EXIT_BLOCKED,
+                               f"unknown stage {args.stage_id} in run "
+                               f"{run['run_id']} (project {pid})")
+            rid, sid = run["run_id"], st["stage_id"]
+
+            # (1) every packet terminal, at least one MATERIALIZED
+            packets = [dict(r) for r in store.conn.execute(
+                "SELECT packet_id, state FROM packets"
+                " WHERE run_id=? AND stage_id=? ORDER BY packet_id",
+                (rid, sid))]
+            open_pk = [f"{p['packet_id']}:{p['state']}" for p in packets
+                       if p["state"] not in _PROMOTE_PACKET_TERMINAL]
+            if open_pk:
+                raise CliError(
+                    EXIT_BLOCKED,
+                    f"stage promote blocked: packets_pending — "
+                    f"{', '.join(open_pk)}; every packet of the stage must "
+                    f"be terminal ({'/'.join(_PROMOTE_PACKET_TERMINAL)})")
+            if not any(p["state"] == "MATERIALIZED" for p in packets):
+                raise CliError(
+                    EXIT_BLOCKED,
+                    f"stage promote blocked: nothing_materialized — stage "
+                    f"{sid} has no MATERIALIZED packet; run a wave that "
+                    f"materializes at least one packet first")
+
+            # (2) EXECUTING -> STAGED (VOL-08 §4; already STAGED proceeds)
+            if st["state"] == "EXECUTING":
+                try:
+                    st = stage.transition_stage(store, rid, sid, "STAGED")
+                except ValueError as e:
+                    raise CliError(EXIT_BLOCKED, f"stage promote failed: {e}")
+            elif st["state"] != "STAGED":
+                raise CliError(EXIT_BLOCKED,
+                               f"stage {sid} is {st['state']}; promotion "
+                               f"requires the stage to be EXECUTING/STAGED "
+                               f"(VOL-08 §4)")
+
+            # (3) HIGH/CRITICAL risk gate: a recorded C2C result for this
+            # run+stage (VOL-16 §6), waived only by an audited --skip-c2c
+            if st["risk_effective"] in _C2C_GATE_RISK:
+                recorded = store.conn.execute(
+                    "SELECT COUNT(*) FROM events WHERE kind='c2c_recorded'"
+                    " AND run_id=? AND stage_id=?", (rid, sid)).fetchone()[0]
+                if not recorded:
+                    if not args.skip_c2c:
+                        raise CliError(
+                            EXIT_BLOCKED,
+                            f"stage promote blocked: c2c_gate_required — "
+                            f"{sid} is {st['risk_effective']} risk and no C2C "
+                            f"result is recorded for {rid}/{sid}; record the "
+                            f"external auditor's response first, or pass "
+                            f"--skip-c2c to waive the gate explicitly")
+                    with store.mutation():
+                        store._event("c2c_waiver",
+                                     {"flag": "--skip-c2c",
+                                      "risk_effective": st["risk_effective"],
+                                      "note": "HIGH/CRITICAL c2c gate waived "
+                                              "by operator flag"},
+                                     run_id=rid, stage_id=sid)
+                    c2c_waived = True
+
+            # (4) staged commit = staging worktree HEAD (D-12 snapshot
+            # identity; the worktree wave start created at the locked base)
+            staging_ws = pdir / "workspaces" / sid / "staging"
+            if not staging_ws.is_dir():
+                raise CliError(
+                    EXIT_BLOCKED,
+                    f"stage promote blocked: staging_missing — the stage's "
+                    f"staging worktree {staging_ws} does not exist "
+                    f"(created by wave start)")
+            try:
+                if materialize is not None:
+                    staged_commit = materialize.staging_commit_sha(staging_ws)
+                else:
+                    staged_commit = _git_out(staging_ws, "rev-parse", "HEAD")
+            except RuntimeError as e:
+                raise CliError(EXIT_BLOCKED,
+                               f"stage promote blocked: staged commit "
+                               f"unreadable in {staging_ws}: {e}")
+
+            # (5) intent-first ordering (VOL-11 §2): the INTENDED promotion
+            # intent for exactly this staged commit, written before any repo
+            # write (idempotent on retry after a refused promotion)
+            with store.mutation():
+                have = store.conn.execute(
+                    "SELECT COUNT(*) FROM promotion_intents WHERE run_id=?"
+                    " AND stage_id=? AND staged_head=? AND state='INTENDED'",
+                    (rid, sid, staged_commit)).fetchone()[0]
+                if not have:
+                    store.conn.execute(
+                        "INSERT INTO promotion_intents(intent_id, run_id,"
+                        " stage_id, stage_revision, expected_canonical_head,"
+                        " expected_dirty_digest, staged_head, final_audit_ref,"
+                        " state, created_at) VALUES (?,?,?,?,?,?,?,?,?,?)",
+                        ("pi-" + ids.new_nonce(8), rid, sid,
+                         st["stage_revision"], st["expected_canonical_head"],
+                         st["canonical_dirty_digest"], staged_commit, None,
+                         "INTENDED", ids.now_iso()))
+                    store._event("promotion_intent_created",
+                                 {"staged_head": staged_commit,
+                                  "expected_canonical_head":
+                                      st["expected_canonical_head"]},
+                                 run_id=rid, stage_id=sid)
+
+            # (6) the promotion itself: dirty CAS + HEAD CAS + descendant
+            # check + ff-only merge (I30/I39, all pre-checked before a single
+            # repo write) and one S transaction settling the stage PROMOTED.
+            # Failure reasons (DIRTY_OR_DRIFT / HEAD_DRIFT / NOT_DESCENDANT /
+            # NO_INTENT / UNKNOWN_STAGE / ...) map to exit 5 with the reason.
+            result = promote_mod.promote(
+                store, rid, sid, git_root=repo, staged_commit=staged_commit,
+                expected_head=st["expected_canonical_head"],
+                expected_dirty_digest=st["canonical_dirty_digest"])
+            if not result.get("ok"):
+                reason = str(result.get("reason") or "PROMOTE_FAILED")
+                detail = result.get("detail")
+                raise CliError(EXIT_BLOCKED, f"stage promote blocked: {reason}"
+                               + (f" ({detail})" if detail else ""))
+
+            # (7) post-verify: the physical oracle really advanced (I21) and
+            # the stage row is PROMOTED (promote settled it in one mutation)
+            new_head = result.get("new_head")
+            actual = _git_out(repo, "rev-parse", "HEAD")
+            if actual != new_head:
+                raise CliError(
+                    EXIT_BLOCKED,
+                    f"stage promote verify failed: canonical HEAD is {actual},"
+                    f" promoted new_head is {new_head}")
+            out: dict[str, Any] = {"promoted": True, "stage": sid,
+                                   "run_id": rid, "new_head": new_head,
+                                   "staged_commit": staged_commit}
+            if c2c_waived:
+                out["c2c_waived"] = True
+            _print_json(out)
             return EXIT_OK
         finally:
             conn.close()
@@ -1197,6 +1375,14 @@ def build_parser() -> argparse.ArgumentParser:
     sp = gsub.add_parser("close", help="move a stage to a terminal state "
                                        "(CLOSED; BLOCKED -> CANCELLED)")
     sp.add_argument("stage_id", metavar="SID")
+    sp.set_defaults(func=cmd_stage)
+    sp = gsub.add_parser("promote", help="promote a staged stage onto the "
+                                         "canonical branch (CAS + ff-only, "
+                                         "VOL-11 §2)")
+    sp.add_argument("stage_id", metavar="SID")
+    sp.add_argument("--skip-c2c", action="store_true",
+                    help="waive the HIGH/CRITICAL C2C result gate "
+                         "(audited as a c2c_waiver event)")
     sp.set_defaults(func=cmd_stage)
 
     sp = sub.add_parser("wave", help="wave propose/start/cancel (VOL-09)")
