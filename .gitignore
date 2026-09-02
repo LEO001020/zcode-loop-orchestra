@@ -3,3 +3,6 @@ __pycache__/
 .venv/
 .pytest_cache/
 .venv-ready
+sandbox_tmp.html
+win_tmp.html
+anthropic_tmp.html

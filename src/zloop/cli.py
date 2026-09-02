@@ -1004,7 +1004,9 @@ class MockWorkspaceBackend(wave.MockBackend):
 
 # supervisor.run_wave refuses a wave (writing nothing) with these reasons
 _NO_WRITE_WAVE_REASONS = frozenset({"unknown_run", "controller_busy",
-                                   "unknown_stage", "invalid_wave"})
+                                   "unknown_stage", "invalid_wave",
+                                   "KIMI_SERVER_UP", "owner_alive",
+                                   "ambiguous_fail_closed", "cas_failed"})
 
 
 def _insert_pending_packet(store: "db.ControlStore", rid: str, sid: str,
