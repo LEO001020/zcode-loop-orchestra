@@ -28,7 +28,7 @@ except ImportError:  # POSIX fallback for portability of tests
 
 WAL_FIX_MIN = (3, 51, 3)
 WAL_BACKPORTS = {(3, 50, 7), (3, 44, 6)}
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2
 
 
 class SError(Exception):
@@ -77,7 +77,9 @@ CREATE TABLE IF NOT EXISTS runs (
   run_id TEXT PRIMARY KEY, project_id TEXT NOT NULL REFERENCES projects(project_id),
   objective TEXT NOT NULL,
   state TEXT NOT NULL CHECK(state IN ('ACTIVE','CLOSED','CANCELLED')),
-  created_at TEXT NOT NULL, closed_at TEXT);
+  created_at TEXT NOT NULL, closed_at TEXT,
+  controller_nonce TEXT, controller_pid INTEGER, controller_pid_start TEXT,
+  cancel_requested INTEGER NOT NULL DEFAULT 0);
 
 CREATE TABLE IF NOT EXISTS controller_epochs (
   epoch INTEGER PRIMARY KEY AUTOINCREMENT, run_id TEXT NOT NULL REFERENCES runs(run_id),
@@ -172,6 +174,13 @@ def connect(project_dir: Path, *, create: bool = False) -> sqlite3.Connection:
 
 def _migrate(conn: sqlite3.Connection) -> None:
     conn.executescript(SCHEMA_SQL)  # all statements are IF NOT EXISTS
+    # v2 (D-8): controller-token columns on older databases
+    cols = {r["name"] for r in conn.execute("PRAGMA table_info(runs)")}
+    for col, ddl in (("controller_nonce", "TEXT"), ("controller_pid", "INTEGER"),
+                     ("controller_pid_start", "TEXT"),
+                     ("cancel_requested", "INTEGER NOT NULL DEFAULT 0")):
+        if col not in cols:
+            conn.execute(f"ALTER TABLE runs ADD COLUMN {col} {ddl}")
     conn.execute("BEGIN IMMEDIATE")
     try:
         conn.execute(
@@ -403,7 +412,59 @@ class ControlStore:
                  int(resume_after_clear), ids.now_iso()))
             self._event("binding_attached", {"session_id": session_id}, run_id=run_id)
 
-    # ---- controller epochs (I43) -------------------------------------------
+    # ---- controller ownership (D-8: S-internal CAS token, no long-held OS lock) ----
+
+    def claim_controller(self, run_id: str, *, nonce: Optional[str] = None,
+                         pid: Optional[int] = None, pid_start: Optional[str] = None,
+                         expected_old: Optional[str] = None) -> bool:
+        """CAS-claim run ownership. expected_old=None claims only when free;
+        a caller that has mechanically proven the old owner dead passes
+        expected_old=<old nonce> to take over. Never guesses (I5/I43)."""
+        nonce = nonce or ids.new_nonce()
+        with self.mutation():
+            cur = self.conn.execute(
+                "UPDATE runs SET controller_nonce=?, controller_pid=?,"
+                " controller_pid_start=? WHERE run_id=? AND"
+                " ((? IS NULL AND controller_nonce IS NULL) OR controller_nonce=?)",
+                (nonce, pid, pid_start, run_id, expected_old, expected_old))
+            if cur.rowcount != 1:
+                return False
+            self._event("controller_claimed",
+                       {"nonce": nonce[:8], "pid": pid, "takeover": expected_old is not None},
+                       run_id=run_id)
+        return True
+
+    def release_controller(self, run_id: str, nonce: str) -> bool:
+        with self.mutation():
+            cur = self.conn.execute(
+                "UPDATE runs SET controller_nonce=NULL, controller_pid=NULL,"
+                " controller_pid_start=NULL WHERE run_id=? AND controller_nonce=?",
+                (run_id, nonce))
+            if cur.rowcount == 1:
+                self._event("controller_released", {"nonce": nonce[:8]}, run_id=run_id)
+        return cur.rowcount == 1
+
+    def controller(self, run_id: str) -> Optional[dict]:
+        row = self.conn.execute(
+            "SELECT controller_nonce, controller_pid, controller_pid_start,"
+            " cancel_requested FROM runs WHERE run_id=?", (run_id,)).fetchone()
+        return dict(row) if row else None
+
+    def request_cancel(self, run_id: str) -> bool:
+        """External cancel = command input, NOT a lifecycle transition (D-8).
+        Needs no controller token: the owner observes it on its next tick."""
+        with self.mutation():
+            cur = self.conn.execute(
+                "UPDATE runs SET cancel_requested=1 WHERE run_id=? AND state='ACTIVE'",
+                (run_id,))
+            if cur.rowcount == 1:
+                self._event("cancel_requested", {}, run_id=run_id)
+        return cur.rowcount == 1
+
+    def clear_cancel(self, run_id: str) -> None:
+        with self.mutation():
+            self.conn.execute(
+                "UPDATE runs SET cancel_requested=0 WHERE run_id=?", (run_id,))
 
     def next_controller_epoch(self, run_id: str, host: str, pid: int) -> int:
         with self.mutation():
