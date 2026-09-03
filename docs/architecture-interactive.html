@@ -1,196 +1,130 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="zh-CN">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>ZCode-ZLoop Orchestra 交互式架构与控制回路</title>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ZCode LOOP Orchestra · 架构说明</title>
   <style>
     :root {
-      --bg: #090a0f;
-      --card-bg: rgba(22, 27, 38, 0.85);
-      --card-border: #283347;
-      --text: #f0f4fc;
-      --muted: #8c9bb5;
-      --blue: #3e7df2;
-      --green: #38b278;
-      --violet: #9d75cb;
-      --amber: #d4984e;
-      --red: #e05656;
-    }
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", Inter, "Segoe UI", Roboto, sans-serif;
+      color-scheme: light;
+      --bg: #f7f8f6;
+      --surface: #ffffff;
+      --ink: #17201d;
+      --muted: #5d6a65;
+      --line: #dbe2de;
+      --green: #2b8a63;
+      --green-soft: #f1f8f4;
+      --amber: #b37a2c;
+      --amber-soft: #fff7e8;
+      --blue: #4c76b9;
+      --blue-soft: #f2f6fc;
+      font-family: "Microsoft YaHei UI", "Microsoft YaHei", "PingFang SC",
+        "Noto Sans CJK SC", Arial, sans-serif;
       background: var(--bg);
-      color: var(--text);
-      padding: 30px;
-      line-height: 1.5;
     }
-    header {
-      max-width: 1400px;
-      margin: 0 auto 30px;
-      display: flex;
-      justify-content: space-between;
-      align-items: flex-end;
-      border-bottom: 1px solid var(--card-border);
-      padding-bottom: 20px;
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at 100% 0%, #edf2ee 0, transparent 28rem),
+        var(--bg);
+      line-height: 1.6;
     }
-    h1 { font-size: 28px; font-weight: 700; letter-spacing: -0.5px; }
-    .subtitle { color: var(--muted); font-size: 14px; margin-top: 6px; }
-    .badge {
-      display: inline-block;
-      padding: 4px 10px;
-      border-radius: 20px;
-      font-size: 12px;
-      font-weight: 600;
-      background: rgba(62, 125, 242, 0.15);
-      color: var(--blue);
-      border: 1px solid rgba(62, 125, 242, 0.4);
+    main { width: min(1180px, calc(100% - 40px)); margin: 0 auto; padding: 64px 0 88px; }
+    header { max-width: 850px; margin-bottom: 38px; }
+    .kicker { color: #8d9892; font-size: 12px; font-weight: 500; letter-spacing: .16em; }
+    h1 { margin: 12px 0 10px; font-size: clamp(2rem, 4vw, 3.25rem); line-height: 1.08; letter-spacing: -.045em; }
+    .lead { margin: 0; color: var(--muted); font-size: 1.08rem; }
+    .nav { display: flex; flex-wrap: wrap; gap: 10px 18px; margin-top: 22px; font-size: .92rem; }
+    a { color: #2865b8; }
+    .callout {
+      margin: 28px 0 52px; padding: 20px 24px; border-left: 5px solid var(--green);
+      border-radius: 18px; background: var(--green-soft); border-top: 1px solid #bfdfcc;
+      border-right: 1px solid #bfdfcc; border-bottom: 1px solid #bfdfcc;
     }
-    .grid-metrics {
-      max-width: 1400px;
-      margin: 0 auto 30px;
-      display: grid;
-      grid-template-columns: repeat(4, 1fr);
-      gap: 16px;
+    .callout strong { display: block; font-size: 1.08rem; }
+    .callout span { display: block; color: #527164; margin-top: 3px; }
+    section { margin-top: 58px; }
+    h2 { margin: 0 0 8px; font-size: 1.55rem; letter-spacing: -.025em; }
+    .section-lead { margin: 0 0 20px; color: var(--muted); }
+    figure { margin: 24px 0 0; padding: 18px; background: var(--surface); border: 1px solid var(--line); border-radius: 22px; box-shadow: 0 12px 28px rgba(114, 128, 121, .08); }
+    img { display: block; width: 100%; height: auto; border-radius: 12px; }
+    figcaption { margin: 13px 4px 0; color: var(--muted); font-size: .9rem; }
+    .notes { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; margin-top: 24px; }
+    .note { padding: 20px; background: var(--surface); border: 1px solid var(--line); border-radius: 18px; }
+    .note h3 { margin: 0 0 6px; font-size: 1.02rem; }
+    .note p { margin: 0; color: var(--muted); font-size: .92rem; }
+    .green { border-top: 4px solid var(--green); }
+    .amber { border-top: 4px solid var(--amber); }
+    .blue { border-top: 4px solid var(--blue); }
+    footer { margin-top: 56px; padding-top: 18px; border-top: 1px solid var(--line); color: #8d9892; font-size: .86rem; }
+    @media (max-width: 760px) {
+      main { width: min(100% - 24px, 640px); padding-top: 36px; }
+      figure { padding: 8px; border-radius: 16px; }
+      .notes { grid-template-columns: 1fr; }
     }
-    .metric-card {
-      background: var(--card-bg);
-      border: 1px solid var(--card-border);
-      border-radius: 14px;
-      padding: 18px 20px;
-      backdrop-filter: blur(10px);
-    }
-    .metric-val { font-size: 32px; font-weight: 800; }
-    .metric-name { color: var(--text); font-size: 14px; font-weight: 600; margin-top: 4px; }
-    .metric-sub { color: var(--muted); font-size: 12px; margin-top: 2px; }
-    .container {
-      max-width: 1400px;
-      margin: 0 auto;
-      background: var(--card-bg);
-      border: 1px solid var(--card-border);
-      border-radius: 18px;
-      padding: 24px;
-      box-shadow: 0 20px 40px rgba(0,0,0,0.5);
-    }
-    .tabs {
-      display: flex;
-      gap: 12px;
-      margin-bottom: 20px;
-      border-bottom: 1px solid var(--card-border);
-      padding-bottom: 12px;
-    }
-    .tab-btn {
-      background: transparent;
-      border: none;
-      color: var(--muted);
-      font-size: 14px;
-      font-weight: 600;
-      padding: 8px 16px;
-      border-radius: 8px;
-      cursor: pointer;
-      transition: all 0.2s;
-    }
-    .tab-btn.active, .tab-btn:hover {
-      background: rgba(255,255,255,0.08);
-      color: var(--text);
-    }
-    .tab-btn.active {
-      color: var(--blue);
-      border-bottom: 2px solid var(--blue);
-      border-radius: 8px 8px 0 0;
-    }
-    .diagram-view {
-      width: 100%;
-      height: 820px;
-      border: none;
-      border-radius: 12px;
-      background: #0d1118;
-    }
-    .interactive-guide {
-      margin-top: 24px;
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 18px;
-    }
-    .guide-card {
-      background: rgba(255,255,255,0.03);
-      border: 1px solid rgba(255,255,255,0.08);
-      border-radius: 12px;
-      padding: 16px;
-    }
-    .guide-title { font-size: 15px; font-weight: 700; margin-bottom: 8px; display: flex; align-items: center; gap: 8px; }
-    .guide-desc { font-size: 12.5px; color: var(--muted); line-height: 1.6; }
-    .tag { font-size: 10px; padding: 2px 6px; border-radius: 4px; text-transform: uppercase; font-weight: 700; }
   </style>
 </head>
 <body>
-  <header>
-    <div>
-      <span class="badge">ZCode-ZLoop Gen8 Native</span>
-      <h1 style="margin-top: 8px;">Triple-Audit &amp; Physical Concurrency Architecture</h1>
-      <p class="subtitle">面向 ZCode 客户端的极简、高韧性、异构多智能体控制回路演示台</p>
-    </div>
-    <div style="text-align: right;">
-      <p style="font-size: 13px; color: var(--muted);">Author: LEO001020</p>
-      <p style="font-size: 12px; color: var(--green); margin-top: 4px;">● All 293 Tests Passed</p>
-    </div>
-  </header>
+  <main>
+    <header>
+      <div class="kicker">ZCODE LOOP ORCHESTRA  /  ARCHITECTURE GUIDE</div>
+      <h1>ZCode 继续思考，ZLoop 把运行管起来</h1>
+      <p class="lead">从目标、任务包和隔离执行，到重新验收、失败恢复与人工晋升：这两张图展示 ZCode LOOP 真正承担的控制边界。</p>
+      <nav class="nav" aria-label="语言与仓库链接">
+        <a href="../README.zh-CN.md">中文 README</a>
+        <a href="../README.md">English README</a>
+        <a href="assets/architecture-overview.zh-CN.svg">完整架构图</a>
+        <a href="assets/architecture-simplified.zh-CN.svg">五步简化图</a>
+      </nav>
+    </header>
 
-  <div class="grid-metrics">
-    <div class="metric-card" style="border-left: 4px solid var(--blue);">
-      <div class="metric-val" style="color: var(--blue);">8–15</div>
-      <div class="metric-name">物理并发 Workers</div>
-      <div class="metric-sub">异步线程池 + 非阻塞 poll() 驱动</div>
-    </div>
-    <div class="metric-card" style="border-left: 4px solid var(--green);">
-      <div class="metric-val" style="color: var(--green);">-53.4%</div>
-      <div class="metric-name">首轮 Token 削减</div>
-      <div class="metric-sub">剥离 14 个 MCP/Skills 架构静态注入</div>
-    </div>
-    <div class="metric-card" style="border-left: 4px solid var(--violet);">
-      <div class="metric-val" style="color: var(--violet);">100%</div>
-      <div class="metric-name">物理异构隔离直通</div>
-      <div class="metric-sub">Gemini 执行 × GLM-5.3 独立审计直通</div>
-    </div>
-    <div class="metric-card" style="border-left: 4px solid var(--amber);">
-      <div class="metric-val" style="color: var(--amber);">0 毒化</div>
-      <div class="metric-name">原子回滚保护</div>
-      <div class="metric-sub">git reset --hard 拔除坏提交零残留</div>
-    </div>
-  </div>
-
-  <div class="container">
-    <div class="tabs">
-      <button class="tab-btn active" onclick="switchDiagram('assets/architecture-simplified.zh-CN.svg', this)">简化架构 (中文)</button>
-      <button class="tab-btn" onclick="switchDiagram('assets/architecture-simplified.en.svg', this)">Simplified (English)</button>
-      <button class="tab-btn" onclick="switchDiagram('assets/architecture-overview.zh-CN.svg', this)">完整全景 (中文)</button>
-      <button class="tab-btn" onclick="switchDiagram('assets/architecture-overview.en.svg', this)">Full Overview (English)</button>
+    <div class="callout">
+      <strong>模型负责判断，程序负责状态，机械现实负责验收，人类负责发布。</strong>
+      <span>主流程回答“接下来发生什么”；右侧服务回答“这些结果凭什么可信”。</span>
     </div>
 
-    <iframe id="diagramFrame" class="diagram-view" src="assets/architecture-simplified.zh-CN.svg"></iframe>
+    <section id="overview">
+      <h2>完整产品流程</h2>
+      <p class="section-lead">从用户目标到人工晋升，右侧同时说明持久化状态、身份围栏、证据记录和审查包的边界。</p>
+      <figure>
+        <img src="assets/architecture-overview.zh-CN.svg" alt="ZCode LOOP 完整产品架构图">
+        <figcaption>完整图适合了解系统如何把动作和保证连接起来。</figcaption>
+      </figure>
+    </section>
 
-    <div class="interactive-guide">
-      <div class="guide-card">
-        <div class="guide-title"><span class="tag" style="background: rgba(157,117,203,0.2); color: var(--violet);">Gate 1</span> C2C-P 规划前置审查</div>
-        <div class="guide-desc">在信息量最少、Prompt 最精炼、Token 成本最低的阶段，直接调用 ChatGPT Web 端进行计划反驳与盲区识别。HIGH/CRITICAL 风险在未记录 plan 审计前物理阻断发射。</div>
+    <section id="simple">
+      <h2>五步产品流程</h2>
+      <p class="section-lead">只记住五件事：输入目标、准备任务、持续推进、验收候选、人工发布。</p>
+      <figure>
+        <img src="assets/architecture-simplified.zh-CN.svg" alt="ZCode LOOP 五步简化产品流程图">
+        <figcaption>简化图适合第一次认识 LOOP，省略了内部模块名称。</figcaption>
+      </figure>
+    </section>
+
+    <section id="boundaries">
+      <h2>读图时只需记住三个边界</h2>
+      <div class="notes">
+        <article class="note green">
+          <h3>工作边界</h3>
+          <p>每次启动使用独立工作目录；差异先回到 staging，规范分支不作为 worker 的直接写入目标。</p>
+        </article>
+        <article class="note blue">
+          <h3>验收边界</h3>
+          <p>执行者的“完成”只是报告。LOOP 会在 staging 重新检查路径、哈希、Schema 和验收命令。</p>
+        </article>
+        <article class="note amber">
+          <h3>发布边界</h3>
+          <p>失败候选恢复并阻塞，审查可以升级；只有人执行最终的 <code>zloop stage promote</code>。</p>
+        </article>
       </div>
-      <div class="guide-card">
-        <div class="guide-title"><span class="tag" style="background: rgba(62,125,242,0.2); color: var(--blue);">Exec</span> 8–15 工作树物理并发</div>
-        <div class="guide-desc">每个任务强绑定私有 Worktree 与 write_scope。底层基于 JIT ThreadPoolExecutor 与非阻塞轮询，杜绝单线程卡死；具备 429 指数抖动退避与 Git 索引锁重试。</div>
-      </div>
-      <div class="guide-card">
-        <div class="guide-title"><span class="tag" style="background: rgba(224,86,86,0.2); color: var(--red);">Gate 2 &amp; 3</span> 机械物化回滚与异构审计</div>
-        <div class="guide-desc">宿主机械单测一旦失败，立即硬原子回滚恢复 Staging 树；通过后进入审级 3，由全限定独立子代理 GLM-5.3 对 Diff 给出 JSON 判决，角色感知门禁阻断非合格晋升。</div>
-      </div>
-    </div>
-  </div>
+    </section>
 
-  <script>
-    function switchDiagram(path, btn) {
-      document.getElementById('diagramFrame').src = path;
-      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-      btn.classList.add('active');
-    }
-  </script>
+    <footer>
+      ZCode LOOP Orchestra 是本地生命周期控制层；具体模型、提供方和 worker 并发能力取决于你的 ZCode 配置与运行环境。
+    </footer>
+  </main>
 </body>
 </html>

@@ -1,103 +1,257 @@
-<svg id="architecture" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1320" role="img" aria-labelledby="title desc">
-  <title id="title">ZCode LOOP Orchestra 架构</title>
-  <desc id="desc">ZCode 原生架构图，展示 Run、Stage、Wave、控制库、工作树、证据、物化、审计、晋升与恢复流程。</desc>
+<svg id="zloop-overview-zh" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1480" role="img" aria-labelledby="title desc">
+  <title id="title">ZCode LOOP Orchestra 完整架构</title>
+  <desc id="desc">ZCode 负责认知与计划，ZLoop 通过 Run、Stage、任务包、波次监督、隔离工作区、机械验收、审查记录和人工晋升，构成可恢复的工程控制回路。</desc>
   <defs>
-    <linearGradient id="pageGlow" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ffffff"/><stop offset="1" stop-color="#eef1f5"/></linearGradient>
-    <linearGradient id="blueWash" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ffffff"/><stop offset="1" stop-color="#eef5ff"/></linearGradient>
-    <linearGradient id="violetWash" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ffffff"/><stop offset="1" stop-color="#f4f0ff"/></linearGradient>
-    <filter id="shadowSoft" x="-20%" y="-20%" width="140%" height="150%"><feDropShadow dx="0" dy="8" stdDeviation="14" flood-color="#7a8492" flood-opacity="0.10"/></filter>
-    <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L10,5 L0,10 z" fill="#8f98a5"/></marker>
-    <marker id="arrowGreen" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L10,5 L0,10 z" fill="#168a50"/></marker>
-    <marker id="arrowRed" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L10,5 L0,10 z" fill="#c5413a"/></marker>
+    <filter id="shadow-soft-zh-full" x="-12%" y="-18%" width="124%" height="146%">
+      <feDropShadow dx="0" dy="7" stdDeviation="12" flood-color="#728079" flood-opacity=".075"/>
+    </filter>
+    <marker id="arrow-zh-full" markerWidth="12" markerHeight="12" refX="9" refY="6" orient="auto" markerUnits="strokeWidth">
+      <path d="M0 0L12 6L0 12Z" fill="#98a49e"/>
+    </marker>
+    <marker id="arrow-green-zh-full" markerWidth="12" markerHeight="12" refX="9" refY="6" orient="auto" markerUnits="strokeWidth">
+      <path d="M0 0L12 6L0 12Z" fill="#2b8a63"/>
+    </marker>
+    <marker id="arrow-red-zh-full" markerWidth="12" markerHeight="12" refX="9" refY="6" orient="auto" markerUnits="strokeWidth">
+      <path d="M0 0L12 6L0 12Z" fill="#c45d53"/>
+    </marker>
   </defs>
   <style>
-    #architecture{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","SF Pro Text",Inter,"Segoe UI",Roboto,Arial,sans-serif;
-      --bg:#f7f7f5;--surface:#ffffff;--surface-2:#f0f1ef;--ink:#151619;--muted:#666a73;--faint:#989da6;
-      --line:#d9dce1;--line-strong:#8f98a5;--shadow:#7a8492;
-      --blue:#1267e5;--blue-soft:#eaf3ff;--blue-stroke:#b9d6ff;--blue-wash-b:#eef5ff;
-      --green:#168a50;--green-soft:#ebf8f0;--green-stroke:#c3e9d2;
-      --violet:#7651c9;--violet-soft:#f2edff;--violet-stroke:#d6c8fa;--violet-wash-b:#f4f0ff;
-      --amber:#a86d00;--amber-soft:#fff6de;--amber-stroke:#edd49a;
-      --red:#c5413a;--red-soft:#fff0ee;--red-stroke:#f0beb9;
-    }
-    .page{fill:var(--bg)}.decor{fill:url(#pageGlow)}.title{fill:var(--ink);font-size:42px;font-weight:710;letter-spacing:-1.6px}
-    .subtitle{fill:var(--muted);font-size:17px;font-weight:430;letter-spacing:-.15px}.eyebrow{fill:var(--faint);font-size:12px;font-weight:700;letter-spacing:1.8px}
-    .metric-value{fill:var(--ink);font-size:26px;font-weight:720;letter-spacing:-.8px}.metric-label{fill:var(--muted);font-size:12px;font-weight:610}.metric-sub{fill:var(--faint);font-size:11px;font-weight:460}
-    .stage{fill:var(--faint);font-size:11px;font-weight:760;letter-spacing:1.8px}.node-title{fill:var(--ink);font-size:18px;font-weight:690;letter-spacing:-.3px}
-    .node-sub{fill:var(--muted);font-size:12.2px;font-weight:460}.node-note{fill:var(--faint);font-size:11px;font-weight:500}.chip-text{font-size:10px;font-weight:750;letter-spacing:.35px}
-    .small{fill:var(--muted);font-size:10.5px;font-weight:500}.foot{fill:var(--faint);font-size:10.5px;font-weight:500}
-    .box{fill:var(--surface);stroke:var(--line);stroke-width:1}.blue-card{fill:url(#blueWash);stroke:var(--blue-stroke);stroke-width:1.2}
-    .green-card{fill:var(--surface);stroke:var(--green-stroke);stroke-width:1.2}.violet-card{fill:url(#violetWash);stroke:var(--violet-stroke);stroke-width:1.2}
-    .amber-card{fill:var(--surface);stroke:var(--amber-stroke);stroke-width:1.2}.red-card{fill:var(--red-soft);stroke:var(--red-stroke);stroke-width:1.2}
-    .connector{fill:none;stroke:var(--line-strong);stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round;marker-end:url(#arrow)}
-    .connector-soft{fill:none;stroke:var(--line);stroke-width:1.3;stroke-linecap:round;stroke-linejoin:round}
-    .connector-green{fill:none;stroke:var(--green);stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round;marker-end:url(#arrowGreen)}
-    .connector-red{fill:none;stroke:var(--red);stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:6 7;marker-end:url(#arrowRed)}
-    .hairline{stroke:var(--line);stroke-width:1}.metric,.raised{filter:url(#shadowSoft)}.blue-text{fill:var(--blue)}.green-text{fill:var(--green)}
-    .violet-text{fill:var(--violet)}.amber-text{fill:var(--amber)}.red-text{fill:var(--red)}
+    #zloop-overview-zh{font-family:"Microsoft YaHei UI","Microsoft YaHei","PingFang SC","Noto Sans CJK SC",Arial,sans-serif}
+    .page{fill:#f7f8f6}.decor{fill:#edf2ee}
+    .eyebrow{fill:#8d9892;font-size:12px;font-weight:500;letter-spacing:2px}
+    .title{fill:#17201d;font-size:48px;font-weight:500;letter-spacing:-1.8px}
+    .subtitle{fill:#5d6a65;font-size:18px;font-weight:400}
+    .hero-title{fill:#17201d;font-size:18px;font-weight:500}
+    .hero-body{fill:#5d6a65;font-size:14px;font-weight:400}
+    .section{fill:#8d9892;font-size:11px;font-weight:500;letter-spacing:1.8px}
+    .rail{fill:#8d9892;font-size:11px;font-weight:500;letter-spacing:1.3px}
+    .node-title{fill:#17201d;font-size:20px;font-weight:500;letter-spacing:-.4px}
+    .node-body{fill:#5d6a65;font-size:14px;font-weight:400}
+    .node-note{fill:#8d9892;font-size:12px;font-weight:400}
+    .service-title{fill:#17201d;font-size:17px;font-weight:500}
+    .service-body{fill:#5d6a65;font-size:13px;font-weight:400}
+    .chip{fill:#65716c;font-size:11px;font-weight:400}
+    .number{fill:#fff;font-size:12px;font-weight:500}
+    .release-title{fill:#173d2e;font-size:19px;font-weight:500}
+    .release-body{fill:#4b6c5e;font-size:14px;font-weight:400}
+    .foot{fill:#8d9892;font-size:11px;font-weight:400}
+    .card{fill:#fff;stroke:#dbe2de;stroke-width:1.2;filter:url(#shadow-soft-zh-full)}
+    .blue{fill:#f2f6fc;stroke:#c9d8ec;stroke-width:1.2;filter:url(#shadow-soft-zh-full)}
+    .green{fill:#f1f8f4;stroke:#bfdfcc;stroke-width:1.2;filter:url(#shadow-soft-zh-full)}
+    .amber{fill:#fff7e8;stroke:#ecd39e;stroke-width:1.2;filter:url(#shadow-soft-zh-full)}
+    .red{fill:#fff4f1;stroke:#efc7c1;stroke-width:1.2;filter:url(#shadow-soft-zh-full)}
+    .ink{fill:#fbfcfa;stroke:#d5e2da;stroke-width:1.2;filter:url(#shadow-soft-zh-full)}
+    .hairline{stroke:#dce3df;stroke-width:1}
+    .flow{fill:none;stroke:#98a49e;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;marker-end:url(#arrow-zh-full)}
+    .flow-soft{fill:none;stroke:#cad3ce;stroke-width:1.2;stroke-linecap:round;stroke-dasharray:5 7}
+    .flow-green{fill:none;stroke:#2b8a63;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;marker-end:url(#arrow-green-zh-full)}
+    .flow-red{fill:none;stroke:#c45d53;stroke-width:1.8;stroke-linecap:round;stroke-dasharray:6 7;marker-end:url(#arrow-red-zh-full)}
   </style>
 
-  <rect class="page" width="1600" height="1320"/>
-  <circle class="decor" cx="1492" cy="8" r="260" opacity=".65"/><circle class="decor" cx="94" cy="1260" r="220" opacity=".5"/>
+  <rect class="page" width="1600" height="1480"/>
+  <circle class="decor" cx="1490" cy="20" r="250" opacity=".82"/>
+  <circle class="decor" cx="75" cy="1420" r="205" opacity=".55"/>
 
-  <text class="eyebrow" x="72" y="54">系统架构 · ZCODE LOOP 控制回路</text>
-  <text class="title" x="72" y="96">ZCode LOOP Orchestra</text>
-  <text class="subtitle" x="72" y="127">ZCode 原生的 Run、Wave、证据与受控晋升系统，用于可审计的并行工程。</text>
+  <text class="eyebrow" x="80" y="56">ZLOOP ORCHESTRA  /  ARCHITECTURE</text>
+  <text class="title" x="80" y="110">ZCode 继续思考；ZLoop 把一次运行管起来</text>
+  <text class="subtitle" x="80" y="143">模型负责判断，程序负责状态，机械现实负责验收，人类负责发布。</text>
 
-  <g class="metric raised"><rect class="box" x="72" y="160" rx="20" ry="20" width="330" height="84"/><text class="metric-value" x="96" y="199">RUN</text><text class="metric-label" x="166" y="197">持久控制记录</text><text class="metric-sub" x="96" y="221">SQLite S 与生命周期事件</text><rect x="72" y="160" width="4" height="84" rx="2" fill="#1267e5"/></g>
-  <g class="metric raised"><rect class="box" x="418" y="160" rx="20" ry="20" width="330" height="84"/><text class="metric-value" x="442" y="199">STAGE</text><text class="metric-label" x="548" y="197">版本栅栏阶段</text><text class="metric-sub" x="442" y="221">PLANNING → PROMOTED</text><rect x="418" y="160" width="4" height="84" rx="2" fill="#a86d00"/></g>
-  <g class="metric raised"><rect class="box" x="764" y="160" rx="20" ry="20" width="330" height="84"/><text class="metric-value" x="788" y="199">WAVE</text><text class="metric-label" x="900" y="197">冷波次监督器</text><text class="metric-sub" x="788" y="221">按依赖关系执行 poll()</text><rect x="764" y="160" width="4" height="84" rx="2" fill="#168a50"/></g>
-  <g class="metric raised"><rect class="box" x="1110" y="160" rx="20" ry="20" width="418" height="84"/><text class="metric-value" x="1134" y="199">C2C</text><text class="metric-label" x="1212" y="197">脱敏审计包</text><text class="metric-sub" x="1134" y="221">PREPARE → RECORD</text><rect x="1110" y="160" width="4" height="84" rx="2" fill="#7651c9"/></g>
-
-  <line class="hairline" x1="160" y1="286" x2="160" y2="1254" opacity=".9"/><circle cx="160" cy="299" r="4" fill="#8f98a5"/>
-  <text class="stage" x="72" y="304">输入</text><text class="stage" x="72" y="400">运行</text><text class="stage" x="72" y="502">规划</text><text class="stage" x="72" y="611">控制</text>
-  <text class="stage" x="72" y="728">执行</text><text class="stage" x="72" y="840">证据</text><text class="stage" x="72" y="948">物化</text>
-  <text class="stage" x="72" y="1041">审计</text><text class="stage" x="72" y="1124">晋升</text><text class="stage" x="72" y="1226">记录</text>
-
-  <path class="connector" d="M800 338 L800 356"/><path class="connector" d="M800 431 L800 454"/><path class="connector" d="M800 555 L800 575"/>
-  <path class="connector" d="M800 681 L800 702"/><path class="connector" d="M800 786 L800 810"/><path class="connector" d="M800 890 L800 909"/>
-  <path class="connector" d="M800 995 L800 1011"/><path class="connector" d="M800 1083 L800 1098"/><path class="connector" d="M800 1164 L800 1190"/>
-
-  <g class="raised"><rect class="box" x="220" y="268" rx="22" ry="22" width="1160" height="70"/>
-    <text class="node-title" x="800" y="296" text-anchor="middle">开发者目标</text><text class="node-sub" x="800" y="319" text-anchor="middle">项目目标先进入 Run；规范分支始终位于工作进程池之外。</text>
+  <g>
+    <rect class="card" x="80" y="178" width="345" height="78" rx="21"/>
+    <rect x="80" y="178" width="6" height="78" rx="3" fill="#4c76b9"/>
+    <text class="hero-title" x="108" y="210">ZCode 根对话</text>
+    <text class="hero-body" x="108" y="235">认知权威：理解目标、分解任务、裁决分歧</text>
+  </g>
+  <g>
+    <rect class="card" x="445" y="178" width="345" height="78" rx="21"/>
+    <rect x="445" y="178" width="6" height="78" rx="3" fill="#2b8a63"/>
+    <text class="hero-title" x="473" y="210">Wave Supervisor</text>
+    <text class="hero-body" x="473" y="235">执行权威：管理 worker、状态、隔离与恢复</text>
+  </g>
+  <g>
+    <rect class="card" x="810" y="178" width="345" height="78" rx="21"/>
+    <rect x="810" y="178" width="6" height="78" rx="3" fill="#b37a2c"/>
+    <text class="hero-title" x="838" y="210">机械现实</text>
+    <text class="hero-body" x="838" y="235">正确性权威：测试、编译、哈希与运行结果</text>
+  </g>
+  <g>
+    <rect class="card" x="1175" y="178" width="345" height="78" rx="21"/>
+    <rect x="1175" y="178" width="6" height="78" rx="3" fill="#53615b"/>
+    <text class="hero-title" x="1203" y="210">人类维护者</text>
+    <text class="hero-body" x="1203" y="235">发布权威：唯一能够触发最终晋升的一方</text>
   </g>
 
-  <g class="raised"><rect class="blue-card" x="220" y="356" rx="24" ry="24" width="1160" height="75"/>
-    <rect x="242" y="371" rx="10" ry="10" width="122" height="23" fill="#eaf3ff" stroke="#b9d6ff"/><text class="chip-text blue-text" x="303" y="386.5" text-anchor="middle">控制入口</text>
-    <text class="node-title" x="800" y="384" text-anchor="middle">zloop run → stage</text><text class="node-sub" x="800" y="409" text-anchor="middle">创建持久 Run，打开带风险边界的 Stage，并在派发前记录基线引用。</text>
+  <text class="section" x="80" y="302">THE CONTROL LOOP  /  一项任务真正经历的路径</text>
+  <text class="section" x="1120" y="302">SUPPORT SERVICES  /  为主流程提供证据</text>
+  <line class="hairline" x1="80" y1="318" x2="1520" y2="318"/>
+
+  <line class="hairline" x1="188" y1="344" x2="188" y2="1308"/>
+  <circle cx="188" cy="356" r="4" fill="#98a49e"/>
+  <text class="rail" x="80" y="362">INTENT</text>
+  <text class="rail" x="80" y="486">BOUNDARY</text>
+  <text class="rail" x="80" y="632">CONTROL</text>
+  <text class="rail" x="80" y="786">EXECUTE</text>
+  <text class="rail" x="80" y="954">VERIFY</text>
+  <text class="rail" x="80" y="1122">REVIEW</text>
+  <text class="rail" x="80" y="1262">PROMOTE</text>
+
+  <path class="flow" d="M645 436V452"/>
+  <path class="flow" d="M645 574V590"/>
+  <path class="flow" d="M645 706V722"/>
+  <path class="flow" d="M645 858V874"/>
+  <path class="flow" d="M645 1034V1050"/>
+  <path class="flow-green" d="M645 1188V1204"/>
+
+  <g>
+    <rect class="blue" x="240" y="344" width="810" height="92" rx="24"/>
+    <circle cx="280" cy="390" r="18" fill="#4c76b9"/>
+    <text class="number" x="280" y="394" text-anchor="middle">01</text>
+    <text class="node-title" x="322" y="383">目标进入 Run 与 Stage</text>
+    <text class="node-body" x="322" y="411">根对话解释目标；LOOP 记录基线、风险下限和阶段版本。</text>
+    <text class="node-note" x="1008" y="394" text-anchor="end">规范分支仍在 worker 生命周期之外</text>
   </g>
 
-  <g class="raised"><rect class="box" x="220" y="454" rx="21" ry="21" width="558" height="101"/><text class="eyebrow" x="244" y="480">C2C-P</text><text class="node-title" x="244" y="510">规划审查包</text><text class="node-sub" x="244" y="535">有界、脱敏的计划材料与已记录的规划回应。</text></g>
-  <g class="raised"><rect class="box" x="822" y="454" rx="21" ry="21" width="558" height="101"/><text class="eyebrow" x="846" y="480">WAVE PROPOSAL</text><text class="node-title" x="846" y="510">任务包与范围</text><text class="node-sub" x="846" y="535">依赖关系、写入范围、验收命令与任务包版本。</text></g><path class="connector-soft" d="M778 504 H822"/>
-
-  <g class="raised"><rect class="amber-card" x="220" y="575" rx="24" ry="24" width="1160" height="106"/>
-    <text class="node-title" x="800" y="603" text-anchor="middle">ControlStore 与生命周期门禁</text><text class="node-sub" x="800" y="626" text-anchor="middle">SQLite S 持久化状态；监督器负责一条明确的 Wave 控制循环。</text>
-    <g><rect x="247" y="643" width="255" height="23" rx="11.5" fill="#fff6de" stroke="#edd49a"/><text class="small" x="374.5" y="658" text-anchor="middle">Run / Stage / Packet 行</text>
-      <rect x="520" y="643" width="255" height="23" rx="11.5" fill="#fff6de" stroke="#edd49a"/><text class="small" x="647.5" y="658" text-anchor="middle">版本与启动栅栏</text>
-      <rect x="793" y="643" width="255" height="23" rx="11.5" fill="#fff6de" stroke="#edd49a"/><text class="small" x="920.5" y="658" text-anchor="middle">所有者锁与心跳</text>
-      <rect x="1066" y="643" width="287" height="23" rx="11.5" fill="#fff6de" stroke="#edd49a"/><text class="small" x="1209.5" y="658" text-anchor="middle">状态迁移门禁</text></g>
+  <g>
+    <rect class="amber" x="240" y="452" width="810" height="122" rx="24"/>
+    <circle cx="280" cy="494" r="18" fill="#b37a2c"/>
+    <text class="number" x="280" y="498" text-anchor="middle">02</text>
+    <text class="node-title" x="322" y="487">计划变成有边界的任务包</text>
+    <text class="node-body" x="322" y="516">每个 Packet 声明目标、授权路径、验收命令、约束与依赖。</text>
+    <text class="node-body" x="322" y="543">DAG 门禁先拒绝循环依赖和同波次重叠写入，再允许派发。</text>
+    <rect x="790" y="521" width="218" height="28" rx="14" fill="#fffdf8" stroke="#e8cf9a"/>
+    <text class="chip" x="899" y="539" text-anchor="middle">proposal → host validation</text>
   </g>
 
-  <g class="raised"><rect class="green-card" x="220" y="702" rx="24" ry="24" width="558" height="84"/><rect x="242" y="717" rx="10" ry="10" width="114" height="23" fill="#ebf8f0" stroke="#c3e9d2"/><text class="chip-text green-text" x="299" y="732.5" text-anchor="middle">监督器</text><text class="node-title" x="499" y="742" text-anchor="middle">冷波次监督器</text><text class="node-sub" x="499" y="765" text-anchor="middle">按依赖关系派发，并使用非阻塞 poll() 驱动</text></g>
-  <g class="raised"><rect class="green-card" x="822" y="702" rx="24" ry="24" width="558" height="84"/><rect x="844" y="717" rx="10" ry="10" width="114" height="23" fill="#ebf8f0" stroke="#c3e9d2"/><text class="chip-text green-text" x="901" y="732.5" text-anchor="middle">后端</text><text class="node-title" x="1101" y="742" text-anchor="middle">工作进程与报告</text><text class="node-sub" x="1101" y="765" text-anchor="middle">启动、收集、接受结果并分类重试</text></g>
-  <path class="connector-soft" d="M499 786 V800 H800"/><path class="connector-soft" d="M1101 786 V800 H800"/>
+  <g>
+    <rect class="green" x="240" y="590" width="810" height="116" rx="24"/>
+    <circle cx="280" cy="632" r="18" fill="#2b8a63"/>
+    <text class="number" x="280" y="636" text-anchor="middle">03</text>
+    <text class="node-title" x="322" y="625">监督器推进整个 Wave</text>
+    <text class="node-body" x="322" y="654">先持久化启动意图，只启动依赖已满足的任务，并非阻塞地收取结果。</text>
+    <text class="node-body" x="322" y="681">等待、计数、取消和终态结算都由程序处理，不占用额外模型轮次。</text>
+  </g>
 
-  <g class="raised"><rect class="box" x="220" y="810" rx="22" ry="22" width="1160" height="80"/><text class="node-title" x="800" y="838" text-anchor="middle">每次启动一个 Git 工作树</text><text class="node-sub" x="800" y="862" text-anchor="middle">分离工作树、明确路径范围、差异枚举与持久化的尝试身份。</text></g>
+  <g>
+    <rect class="card" x="240" y="722" width="390" height="136" rx="24"/>
+    <rect x="240" y="722" width="6" height="136" rx="3" fill="#2b8a63"/>
+    <text class="node-title" x="272" y="760">隔离的 Launch Workspace</text>
+    <text class="node-body" x="272" y="791">每次启动都有新的 launch_id</text>
+    <text class="node-body" x="272" y="816">和独立工作目录；旧结果只进隔离区。</text>
+    <text class="node-note" x="272" y="841">worker 不直接写控制库或规范分支</text>
+  </g>
+  <g>
+    <rect class="card" x="660" y="722" width="390" height="136" rx="24"/>
+    <rect x="660" y="722" width="6" height="136" rx="3" fill="#4c76b9"/>
+    <text class="node-title" x="692" y="760">并发的 Codex SDK Turns</text>
+    <text class="node-body" x="692" y="791">一个 supervisor、一个 client，</text>
+    <text class="node-body" x="692" y="816">并行运行多个独立 workspace 的 turn。</text>
+    <text class="node-note" x="692" y="841">worker 配置关闭嵌套 Agent；结果通过身份围栏接收</text>
+  </g>
 
-  <g class="raised"><rect class="violet-card" x="220" y="909" rx="22" ry="22" width="558" height="86"/><text class="node-title" x="499" y="940" text-anchor="middle">物化任务包</text><text class="node-sub" x="499" y="964" text-anchor="middle">先把执行者的差异重新应用到私有暂存区，再进行验收。</text><text class="node-note" x="499" y="982" text-anchor="middle">候选提交带有 Stage 与 Packet 身份</text></g>
-  <g class="raised"><rect class="red-card" x="822" y="909" rx="22" ry="22" width="558" height="86"/><text class="node-title" x="1101" y="940" text-anchor="middle">验收失败时回滚</text><text class="node-sub" x="1101" y="964" text-anchor="middle">把暂存区恢复到物化前 SHA，将失败限制在当前候选内。</text><text class="node-note" x="1101" y="982" text-anchor="middle">按策略保留候选提交作为证据</text></g>
-  <path class="connector-red" d="M822 952 H760 V850 H700"/><text class="small red-text" x="774" y="938" text-anchor="end">失败</text>
+  <g>
+    <rect class="amber" x="240" y="874" width="810" height="160" rx="24"/>
+    <circle cx="280" cy="916" r="18" fill="#b37a2c"/>
+    <text class="number" x="280" y="920" text-anchor="middle">04</text>
+    <text class="node-title" x="322" y="909">Materialize：在 staging 重做验收</text>
+    <text class="node-body" x="322" y="938">把 worker 差异应用到私有 staging，核对授权路径，再运行宿主验收命令。</text>
+    <text class="node-body" x="322" y="965">通过：形成带来源信息的候选提交；失败：恢复物化前 SHA 并阻塞任务。</text>
+    <rect x="322" y="986" width="242" height="28" rx="14" fill="#fffdf8" stroke="#e8cf9a"/>
+    <text class="chip" x="443" y="1004" text-anchor="middle">mechanical result beats model report</text>
+  </g>
 
-  <g class="raised"><rect class="violet-card" x="220" y="1011" rx="22" ry="22" width="558" height="72"/><rect x="242" y="1026" rx="10" ry="10" width="118" height="23" fill="#f2edff" stroke="#d6c8fa"/><text class="chip-text violet-text" x="301" y="1041.5" text-anchor="middle">C2C-A</text><text class="node-title" x="499" y="1040" text-anchor="middle">结果记录</text><text class="node-sub" x="499" y="1063" text-anchor="middle">把有界复核回应记录到暂存候选上</text></g>
-  <g class="raised"><rect class="blue-card" x="822" y="1011" rx="22" ry="22" width="558" height="72"/><text class="node-title" x="1101" y="1040" text-anchor="middle">晋升就绪检查</text><text class="node-sub" x="1101" y="1063" text-anchor="middle">Stage、Packet、证据与预期 HEAD 保持一致</text></g><path class="connector-soft" d="M778 1047 H822"/>
+  <path class="flow-red" d="M1050 958H1080V1014H948"/>
+  <text class="node-note" x="1070" y="947" text-anchor="end" fill="#b34f48">FAIL</text>
+  <g>
+    <rect class="red" x="680" y="1050" width="370" height="138" rx="24"/>
+    <text class="node-title" x="710" y="1086">失败分支：恢复并保留证据</text>
+    <text class="node-body" x="710" y="1115">staging 回到已知状态，失败的差异、</text>
+    <text class="node-body" x="710" y="1140">日志和身份信息继续可查。</text>
+    <text class="node-note" x="710" y="1166">坏候选不会静默进入下一阶段</text>
+  </g>
+  <g>
+    <rect class="blue" x="240" y="1050" width="410" height="138" rx="24"/>
+    <circle cx="280" cy="1092" r="18" fill="#4c76b9"/>
+    <text class="number" x="280" y="1096" text-anchor="middle">05</text>
+    <text class="node-title" x="322" y="1085">独立审查形成记录</text>
+    <text class="node-body" x="322" y="1115">C2C-P 审计划，C2C-A 审结果；</text>
+    <text class="node-body" x="322" y="1140">回应有边界、脱敏并标记为外部不可信。</text>
+    <text class="node-note" x="322" y="1166">审查能阻断或升级，但不能发布</text>
+  </g>
 
-  <g class="raised"><rect class="green-card" x="220" y="1098" rx="22" ry="22" width="558" height="66"/><text class="node-title" x="499" y="1125" text-anchor="middle">CAS + git merge --ff-only</text><text class="node-sub" x="499" y="1148" text-anchor="middle">受控写入规范分支，不隐藏覆盖其他变更</text></g>
-  <g class="raised"><rect class="box" x="822" y="1098" rx="22" ry="22" width="558" height="66"/><text class="node-title" x="1101" y="1125" text-anchor="middle">人工发布权</text><text class="node-sub" x="1101" y="1148" text-anchor="middle">最终合并或发布只能由人触发</text></g>
-  <path class="connector-green" d="M1101 1083 V1098 H800"/><path class="connector-green" d="M778 1131 H822"/>
+  <g>
+    <rect class="green" x="240" y="1204" width="810" height="112" rx="24"/>
+    <circle cx="280" cy="1246" r="18" fill="#2b8a63"/>
+    <text class="number" x="280" y="1250" text-anchor="middle">06</text>
+    <text class="release-title" x="322" y="1240">CAS + git merge --ff-only → 人工晋升</text>
+    <text class="release-body" x="322" y="1270">候选、版本、Git 状态和发布门全部一致后，只有人执行 stage promote。</text>
+  </g>
 
-  <g class="raised"><rect class="box" x="220" y="1190" rx="22" ry="22" width="558" height="82"/><text class="node-title" x="499" y="1218" text-anchor="middle">zloop.hook</text><text class="node-sub" x="499" y="1242" text-anchor="middle">绑定会话与项目，捕获工具生命周期事件</text><text class="node-note" x="499" y="1261" text-anchor="middle">H0 日志可降级；敏感内容始终脱敏</text></g>
-  <g class="raised"><rect class="violet-card" x="822" y="1190" rx="22" ry="22" width="558" height="82"/><text class="node-title" x="1101" y="1218" text-anchor="middle">历史与恢复</text><text class="node-sub" x="1101" y="1242" text-anchor="middle">查看 Run、Stage、证据、绑定和降级历史</text><text class="node-note" x="1101" y="1261" text-anchor="middle">通过持久化记录应对失败与重启</text></g>
-  <path class="connector-soft" d="M778 1231 H822"/>
+  <path class="flow-soft" d="M1050 390H1100"/>
+  <path class="flow-soft" d="M1050 638H1100"/>
+  <path class="flow-soft" d="M1050 948H1100"/>
+  <path class="flow-soft" d="M1050 1110H1100"/>
+  <path class="flow-soft" d="M1050 1260H1100"/>
 
-  <line class="hairline" x1="72" y1="1293" x2="1528" y2="1293" opacity=".75"/><text class="foot" x="72" y="1310">ZCode 负责生命周期与证据边界；Git 是实际晋升依据；最终发布权始终由人掌握。</text>
+  <g>
+    <rect class="card" x="1100" y="344" width="420" height="204" rx="24"/>
+    <rect x="1100" y="344" width="6" height="204" rx="3" fill="#4c76b9"/>
+    <text class="service-title" x="1132" y="380">持久状态 S</text>
+    <text class="service-body" x="1132" y="410">SQLite 保存 Run、Stage、Packet、Attempt、</text>
+    <text class="service-body" x="1132" y="435">Launch、revision 与生命周期事件。</text>
+    <line class="hairline" x1="1132" y1="460" x2="1488" y2="460"/>
+    <text class="service-body" x="1132" y="490">它是状态依据，不依赖模型记住“进行到哪”。</text>
+    <text class="node-note" x="1132" y="520">单控制器 CAS，变更先落盘再产生物理动作</text>
+  </g>
+
+  <g>
+    <rect class="card" x="1100" y="570" width="420" height="196" rx="24"/>
+    <rect x="1100" y="570" width="6" height="196" rx="3" fill="#b37a2c"/>
+    <text class="service-title" x="1132" y="606">身份围栏</text>
+    <text class="service-body" x="1132" y="636">只有 stage_revision、packet_revision 与</text>
+    <text class="service-body" x="1132" y="661">active_launch_id 同时匹配，结果才会被接收。</text>
+    <line class="hairline" x1="1132" y1="686" x2="1488" y2="686"/>
+    <text class="service-body" x="1132" y="716">迟到、过期或错接的回执只能成为证据，</text>
+    <text class="service-body" x="1132" y="741">不能改写新计划。</text>
+  </g>
+
+  <g>
+    <rect class="card" x="1100" y="788" width="420" height="244" rx="24"/>
+    <rect x="1100" y="788" width="6" height="244" rx="3" fill="#2b8a63"/>
+    <text class="service-title" x="1132" y="824">可恢复的过去：H0 / H1 / H2</text>
+    <text class="service-body" x="1132" y="854">H0 捕获已观察、已脱敏的事件；</text>
+    <text class="service-body" x="1132" y="879">H1 在真正交接边界保存有界检查点；</text>
+    <text class="service-body" x="1132" y="904">H2 按事件与证据引用精确回查。</text>
+    <line class="hairline" x1="1132" y1="929" x2="1488" y2="929"/>
+    <text class="service-body" x="1132" y="959">较大载荷进入内容寻址 Blob；捕获失败时</text>
+    <text class="service-body" x="1132" y="984">fail-soft，不阻断 ZCode 原生对话。</text>
+    <text class="node-note" x="1132" y="1010">当前机械现实始终高于历史摘要</text>
+  </g>
+
+  <g>
+    <rect class="card" x="1100" y="1054" width="420" height="134" rx="24"/>
+    <rect x="1100" y="1054" width="6" height="134" rx="3" fill="#4c76b9"/>
+    <text class="service-title" x="1132" y="1090">Research Broker</text>
+    <text class="service-body" x="1132" y="1120">把外部事实整理成有来源的证据清单，</text>
+    <text class="service-body" x="1132" y="1145">只提供信息，不替根对话作架构判断。</text>
+    <text class="node-note" x="1132" y="1170">外部内容始终是数据，不是控制指令</text>
+  </g>
+
+  <g>
+    <rect class="card" x="1100" y="1204" width="420" height="112" rx="24"/>
+    <rect x="1100" y="1204" width="6" height="112" rx="3" fill="#53615b"/>
+    <text class="service-title" x="1132" y="1240">C2C 审查边界</text>
+    <text class="service-body" x="1132" y="1270">prepare 生成有边界的包，record 保存外部回应；</text>
+    <text class="service-body" x="1132" y="1295">它不会自动调用模型，也没有发布权限。</text>
+  </g>
+
+  <g>
+    <rect class="green" x="80" y="1350" width="1440" height="78" rx="22"/>
+    <rect x="80" y="1350" width="7" height="78" rx="3.5" fill="#2b8a63"/>
+    <text class="hero-title" x="112" y="1382">ZLoop 的承重墙</text>
+    <text class="hero-body" x="112" y="1407">隔离的可写空间、持久状态、身份围栏、宿主机械验收和人工发布边界；任何模型自报都不能越过这些约束。</text>
+  </g>
+
+  <line class="hairline" x1="80" y1="1450" x2="1520" y2="1450"/>
+  <text class="foot" x="80" y="1470">主流程描述“发生什么”；右侧服务描述“凭什么可信”。二者共同构成 ZCode LOOP 的可恢复工程回路。</text>
+  <text class="foot" x="1520" y="1470" text-anchor="end">完整产品架构</text>
 </svg>

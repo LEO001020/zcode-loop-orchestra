@@ -3,70 +3,67 @@
 
 # ZCode LOOP Orchestra
 
-**The control loop that turns ZCode into a continuously running multi-agent engineering team.**
+**A local control layer that keeps ZCode agent work moving, verifiable, and human-released.**
 
 [![CI](https://github.com/LEO001020/zcode-loop-orchestra/actions/workflows/ci.yml/badge.svg)](https://github.com/LEO001020/zcode-loop-orchestra/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![Python 3.14+](https://img.shields.io/badge/Python-3.14%2B-3776AB.svg)](https://www.python.org/)
-[![ZCode v3.10.2+](https://img.shields.io/badge/ZCode-v3.10.2%2B-6E56CF.svg)](https://github.com/LEO001020/zcode-loop-orchestra)
-[![Tests: 293 passed](https://img.shields.io/badge/Tests-293%20passed-brightgreen.svg)](tests/)
+[![Python 3.11+](https://img.shields.io/badge/Python-3.11%2B-3776AB.svg)](https://www.python.org/)
+[![Platform: Windows](https://img.shields.io/badge/Platform-Windows-0078D4.svg)](docs/INSTALL.zh-CN.md)
 
-[Highlights](#highlights) · [Control loop](#the-control-loop-is-the-product) · [Quickstart](#quickstart) · [Why LOOP](#why-loop-exists) · [Architecture](#how-loop-works) · [中文](README.zh-CN.md) · [Docs](docs/)
+[The control loop](#the-control-loop-is-the-product) · [What you get](#what-you-get) · [Quickstart](#quickstart) · [How it works](#how-it-works) · [中文](README.zh-CN.md)
 
 </div>
 
-ZCode can start and coordinate agents. LOOP adds the control loop that a long-running engineering workload needs: bounded planning, isolated worktrees, mechanical acceptance, independent audit, continuous refill, and human-controlled release.
+ZCode can launch agents. LOOP adds the missing control layer around that launch: it records a run, turns work into bounded packets, starts ready work without blocking on one worker, checks returned changes in staging, and leaves the final promotion command to a person.
 
-Give LOOP a goal and a concurrency target. It divides the work into bounded packets, dispatches them, and fills an open slot when a useful worker finishes. The root conversation stays focused on planning and judgment; scripts maintain routine lifecycle state; independent audit stages check the result; and durable history makes each transition inspectable. You do not have to keep asking the system to continue, and no worker can publish by itself.
+In practical terms, you give LOOP a project goal and a packet manifest. The system keeps the submitted work moving inside a supervised wave, rejects unsafe or stale results, and leaves a durable record of what happened. It is a local Python CLI plus managed ZCode hooks; it does not replace ZCode or ship the ZCode binary.
 
-## Highlights
-
-- **8–15 physical concurrency:** ZCode LOOP runs a non-blocking worker pool with isolated Git worktrees, so multiple engineering tasks can progress without sharing a writable checkout.
-- **Set the target once; keep useful slots filled:** The supervisor counts real workers and refills from a bounded backlog until the work is complete or capacity is exhausted.
-- **Three independent model stages:** The root conversation plans, execution agents implement, and audit agents review. Each stage can be assigned its own model and provider; compatible third-party gateways can be used where supported.
-- **Triple-audit safety model:** C2C-P challenges the plan before dispatch, mechanical materialization runs the acceptance checks and rolls back failed staging, and C2C-A reviews the result before promotion.
-- **About 53% lower first-round input tokens:** Context pruning removes irrelevant tool and skill schemas before they reach an agent, leaving more room for the task itself.
-- **Atomic failure containment:** A failed candidate is rejected and its staging state is restored, preventing one poisoned task from cascading into the rest of the wave.
-- **True overlap instead of a blocking driver:** The asynchronous thread pool and non-blocking polling keep independent workers moving while the coordinator remains responsive.
-- **Inspectable lifecycle evidence:** H0 events, content-addressed blobs, control-database rows, and history commands make each run auditable across failures and restarts.
-
-![ZCode LOOP simplified architecture: user objective, root conversation, DAG and lifecycle control, Desktop and headless execution, evidence, human release, and monitoring](docs/assets/architecture-simplified.en.svg)
-
-<p align="center"><sub>At a glance: the root conversation judges, code maintains state and concurrency, independent models audit, and a person decides what ships.</sub></p>
+> **Agents do the work. Code owns the state. Mechanical checks decide what is admissible. A human decides what ships.**
 
 ## The control loop is the product
 
-Many harnesses can launch an agent batch. LOOP addresses the harder problem: keeping a bounded amount of useful work moving for as long as the backlog lasts, while preventing write collisions, making acceptance reproducible, and reserving release authority for a human.
+A native harness is good at starting an agent. A real engineering run also needs to answer what happens when a worker finishes, fails, writes the wrong file, or returns after the plan has changed. LOOP makes those transitions explicit:
 
-> **In plain language:** Set the goal and the concurrency target once. LOOP creates task packets, sends them to isolated workers, checks their results, and starts the next packet when a slot opens. Code handles waiting, counting, retries, and state transitions. Only a real exception is sent back to the root conversation for judgment.
->
-> **What you get:** more work progresses at the same time, one worker cannot overwrite another worker's checkout, failed work does not poison the whole wave, and a different model can inspect the result before anything is promoted.
-
-The control loop enforces these rules:
-
-1. The root conversation produces a bounded decision skeleton instead of performing the batch work itself.
-2. Every work packet declares its goal, authorized paths, acceptance commands, and constraints.
+1. The root conversation produces a bounded decision skeleton instead of doing the batch work itself.
+2. Every packet states its goal, authorized paths, acceptance commands, and constraints.
 3. A DAG gate rejects cyclic dependencies and overlapping write scopes before dispatch.
-4. Desktop or headless workers run in isolated Git worktrees with explicit roles, models, and reasoning limits.
-5. Scripts replay acceptance commands, verify diff boundaries, and record typed lifecycle events.
-6. The independent audit layer can approve, request rework, rank alternatives, or escalate; it cannot publish.
-7. Only material exceptions return to the root conversation. Final merge and release remain human-triggered.
-8. Waiting, polling, counting, routine retries, and state transitions belong to scripts or the state machine, not to extra coordinator turns.
+4. A cold wave supervisor starts only ready packets and uses non-blocking <code>poll()</code> to collect reports.
+5. Materialization reapplies a worker delta to private staging, re-runs host acceptance, and restores the previous staging SHA on failure.
+6. An audit record can block, request rework, or escalate; it cannot publish.
+7. Only a person runs the final promotion command. The canonical branch stays outside the worker lifecycle.
+8. Waiting, polling, counting, routine retries, and state transitions live in code and durable state, not in extra coordinator turns.
 
-**Models make judgments. Code manages state. Independent models audit the work. Humans release it.**
+This is the LOOP promise in one line: **keep useful work moving, keep bad changes contained, and keep release authority human.**
+
+## What you get
+
+The table below explains the design in the order a user experiences it: a limitation in a native harness, the concrete change LOOP makes, and the benefit of that change.
+
+| Native harness limitation | What LOOP changes | What you gain |
+|---|---|---|
+| A submitted batch thins out as workers finish; the conversation has to be prompted to continue. | The supervisor tracks pending and running packets and starts the next ready packet within the wave. | **Useful work keeps moving** while bounded work remains. |
+| Several agents share mutable state or the canonical checkout. | Each launch gets its own working directory; integration happens in a separate staging worktree. | **One worker cannot directly overwrite another worker’s integration state.** |
+| A worker’s “done” message is treated as the result. | LOOP enumerates the returned delta, checks its path scope, reapplies it to staging, and runs host acceptance commands again. | **The candidate is checked where it will be integrated.** |
+| A synchronous driver waits on the first task and makes the rest look parallel. | A cold supervisor uses non-blocking polling and advances independent packets as reports arrive. | **Real overlap without blocking the coordinator on one task.** |
+| One failed candidate leaves a poisoned staging state for later work. | Failed materialization or acceptance restores the pre-materialization SHA and blocks that packet. | **Failure stays local instead of cascading through the wave.** |
+| A plan or result review is detached from the exact run that produced it. | C2C packets are bounded, redacted, hash-recorded, and tied to the run and stage; the response is recorded as external and untrusted. | **Review has an identity, an audit trail, and a clear trust boundary.** |
+| Restarting after a failure loses the sequence of events. | SQLite state, H0 journal entries, content-addressed blobs, bindings, and recovery commands are kept together. | **You can inspect what happened and recover from a degraded history.** |
 
 ## Quickstart
 
-Give this repository to ZCode or another coding agent and paste:
+### Agent-guided installation
+
+Give the repository to ZCode or another coding agent and ask it to read the repository instructions first:
 
 ~~~text
-Install ZCode LOOP Orchestra from https://github.com/LEO001020/zcode-loop-orchestra.
-Read the repository instructions first. Inspect my environment, show the dry run and
-backup plan, wait for my approval, then activate LOOP and verify the installation.
+Install ZCode LOOP Orchestra from
+https://github.com/LEO001020/zcode-loop-orchestra.
+Inspect my Windows environment, show the dry run and backup plan, wait for my
+approval, then activate the managed hooks and verify the installation.
 Do not read, print, or change my API credentials.
 ~~~
 
-Prefer to run it yourself?
+### Direct installation
 
 ~~~powershell
 git clone https://github.com/LEO001020/zcode-loop-orchestra.git
@@ -79,90 +76,109 @@ python -m venv .venv
 .venv\Scripts\python -m zloop.cli install
 ~~~
 
-Use <code>zloop --help</code> to inspect available commands. Start a wave only after the environment check and the plan gate pass.
+The installer is deliberately agent-friendly: it checks the environment, backs up managed hook configuration, changes only its managed files, and provides an uninstall path. It does not contain the ZCode executable or any provider credential.
 
-## Why LOOP exists
+## See the product first
 
-LOOP is not just a way to start more agents. Each part addresses a failure mode that appears when a native harness is used for sustained, concurrent engineering:
+This is the full product view: one user objective becomes a supervised wave, a checked candidate, an audit record, and a human-triggered promotion. The right-hand spine shows the state, identity, and evidence that make the flow recoverable.
 
-| Limitation in a native harness | What LOOP changes | Practical benefit |
-|---|---|---|
-| A batch shrinks as workers finish; a prompt does not reliably refill it. | Count real workers and refill open slots from a bounded packet backlog. | **Sustain useful concurrency** without repeatedly asking for more agents. |
-| The same model writes and reviews its own work. | Separate root, execution, and audit model stages. | **Reduce correlated blind spots** with independent model families. |
-| Concurrent tasks share a checkout or race on the same mutable state. | Give each launch an isolated Git worktree and keep integration controlled. | **Prevent workers from overwriting one another.** |
-| A synchronous driver waits on the first task and makes the rest look parallel. | Use a non-blocking poll loop and an asynchronous worker pool. | **Get real overlap** and keep the coordinator responsive. |
-| One failed candidate contaminates later tasks in staging. | Run mechanical acceptance before promotion and restore failed staging atomically. | **Contain failure** instead of cascading it. |
-| The coordinator spends expensive turns on routine context and lifecycle work. | Prune irrelevant schemas and let scripts own waiting, counting, retry, and state transitions. | **Spend model capacity on decisions** and leave more room for the task. |
-| A run becomes difficult to reconstruct after a failure or restart. | Keep typed H0 events, content-addressed evidence, control-database state, bindings, and recovery history together. | **Explain what happened** and recover from degraded history. |
+![ZCode LOOP full product architecture: objective, run and stage, packet wave, supervisor, isolated launch workspace, materialization and acceptance, audit record, controlled promotion, durable state, evidence, and human release](docs/assets/architecture-overview.en.svg)
 
-The 8–15 concurrency figure and the roughly 53% first-round input reduction are project measurements, not official ZCode limits or a promise that every provider and machine will sustain the same load. Tune the target to the local model capacity and hardware.
+## The five-step version
 
-## How LOOP works
+If you only want the idea, follow the five large steps below. The detailed names are intentionally kept out of this view.
 
-![ZCode LOOP full control-loop architecture: run and stage control, wave supervision, worktree isolation, materialization, audit, promotion, and recovery](docs/assets/architecture-overview.en.svg)
+![ZCode LOOP simplified product flow: enter a goal, make bounded packets, keep ready work moving, verify candidates, and let a human promote the result](docs/assets/architecture-simplified.en.svg)
 
-LOOP separates cognition, execution, evidence, review, integration, and release authority:
+## How it works
 
-- The **root stage** turns the user's objective into a bounded plan and adjudicates material uncertainty.
-- The **execution stage** runs packets in isolated worktrees through the ZCode worker pool.
-- The **mechanical stage** runs tests, schema checks, hashes, and diff-boundary checks independently of the worker's self-report.
-- The **audit stage** reviews the evidence using an independently selected model and may approve, request rework, rank candidates, or escalate.
-- The **integration stage** serializes accepted writes; the **human stage** alone triggers merge or release.
-- The **history and recovery path** exposes runs, stages, evidence, bindings, and degraded history as durable records across failures and restarts.
-
-### Model routing
-
-Root, execution, and audit are separate stages, not one inherited model. Choose the model for each stage in the project configuration. If a third-party model is used, expose it through the Codex-compatible gateway supported by the local ZCode setup. This lets a stronger model spend its budget on planning and adjudication while a faster model handles bounded execution and an independent model checks the result.
-
-### Repository layout
+### The user-visible path
 
 ~~~text
-src/zloop/       Control plane, worker backend, lifecycle, evidence, and CLI
-spec/            Architecture contracts, decisions, invariants, and progress records
-tests/           Unit, integration, concurrency, and chaos coverage
-plugin/          ZCode plugin distribution files and hooks
-docs/            Operational documentation and architecture material
-tools/prompt-lab/ Prompt experiments and context-budget checks
-pyproject.toml   Build metadata and dependencies
-~~~
-
-## Installation and operations
-
-The supported path is an agent-guided, script-executed installation. The scripts inspect the environment, create backups, install only the managed hooks and configuration, and provide a restoration path. The repository does not contain the installed ZCode binary.
-
-### Requirements
-
-- Windows 10/11 x64
-- ZCode v3.10.2 or newer
-- Python 3.14 or newer
-- Git 2.40 or newer
-- A working ZCode login or compatible model gateway
-
-### Daily flow
-
-~~~bash
 zloop run start "Implement the next bounded change"
-zloop stage begin "stage-01" --risk HIGH
+zloop stage begin --objective "Implement the next bounded change" --risk NORMAL
 zloop wave propose packets.json
 zloop wave start W1 --backend codex
 zloop stage promote S01
 ~~~
 
-Run the full test suite locally:
+<code>stage promote</code> is intentionally the last human-triggered step. For HIGH or CRITICAL work, the configured policy may require a recorded result-review packet before that command is allowed.
+
+### What the main components actually do
+
+- **Run and Stage:** record the objective, base reference, risk floor, and stage revision in the control database.
+- **Wave proposal:** validate packet shape, dependency references, risk policy, and write-scope conflicts before any worker is started.
+- **Wave Supervisor:** persist launch intent, start ready packets, poll without blocking on one handle, collect reports, and settle terminal states.
+- **Launch workspace:** give each launch a separate working directory and return a bounded delta for integration. The canonical branch is not a worker write target.
+- **Materialization:** reapply that delta to staging, check authorized paths, run host acceptance commands, create a provenance-bearing candidate commit, or restore staging on failure.
+- **Control database:** persist Run, Stage, Packet, Attempt, Launch, revision, and lifecycle state in <code>control.sqlite3</code>.
+- **Evidence path:** <code>zloop.hook</code> captures scoped lifecycle events into an H0 journal; large or sensitive payloads are redacted and stored through content-addressed blobs.
+- **Promotion:** verify the expected state and Git identity, then use a CAS-protected fast-forward-only promotion. The final command is still issued by a person.
+
+### Model and audit boundaries
+
+Root planning, worker execution, and result review are separate responsibilities. When the host setup exposes independent routing, choose the model for each responsibility separately; a third-party provider must be exposed through the Codex-compatible gateway supported by that setup.
+
+The C2C layer is deliberately narrow. <code>zloop c2c prepare</code> creates a bounded, redacted packet, and <code>zloop c2c record</code> stores the response with its packet hash and identity fields. The current C2C module does not make an automatic HTTP or model call; it records an external response as <code>external_untrusted</code>.
+
+### Failure and recovery in plain language
+
+1. A worker reports a change.
+2. LOOP checks which files changed and whether they are in scope.
+3. LOOP reapplies the change to staging and runs the acceptance commands there.
+4. If a check fails, staging returns to the known pre-materialization SHA and the packet is blocked.
+5. If the candidate is admissible, the audit and promotion gates can continue.
+6. A person decides whether to run the final promotion command.
+
+## Install and operate
+
+### Requirements
+
+- Windows 10 or 11 x64.
+- Python 3.11 or newer.
+- Git and a compatible ZCode installation with local hook support.
+- A working ZCode login or a Codex-compatible model gateway when the selected backend needs one.
+
+### Typical commands
+
+~~~powershell
+zloop run start "Implement the next bounded change"
+zloop stage begin --objective "Implement the next bounded change" --risk HIGH
+zloop c2c prepare --role plan --file plan.txt
+zloop wave propose packets.json
+zloop wave start W1 --backend codex
+zloop c2c prepare --role result --file result.txt
+zloop c2c record --c2c <C2C_ID> --file auditor-response.txt
+zloop stage promote S01
+~~~
+
+Use <code>zloop --help</code> and the guides under [docs/](docs/) for the exact options available in your installation. Run the test suite locally with:
 
 ~~~powershell
 .venv\Scripts\python -m pytest tests -q
 ~~~
 
-The current repository validation contains 293 tests. Provider availability, local credentials, and machine-level concurrency remain deployment-specific.
+The package is designed for a single Windows machine and a controlled local workspace. Provider availability, model limits, and the number of workers a machine can sustain remain deployment-specific.
+
+## Repository layout
+
+~~~text
+src/zloop/        Control plane, worker backend, lifecycle, evidence, and CLI
+spec/             Architecture contracts, decisions, invariants, and progress records
+tests/            Unit, integration, concurrency, and chaos coverage
+plugin/           ZCode plugin distribution files and hooks
+docs/             Operational documentation and architecture material
+tools/prompt-lab/ Prompt experiments and context-budget checks
+pyproject.toml    Build metadata and dependencies
+~~~
 
 ## Security and limitations
 
 - Hooks run as the current user and do not elevate privileges.
-- Provider credentials stay in the user's authenticated ZCode or gateway setup; they are not part of this repository.
-- The mechanical and audit gates can block or escalate, but they do not grant publication authority.
-- The project is designed for one machine and a controlled local workspace, not as a distributed scheduler.
-- The documented concurrency and token figures are measurements from the project environment, not official limits of ZCode or any model provider.
+- Provider credentials stay in the user’s authenticated ZCode or gateway setup; they are not part of this repository.
+- Path checks protect the integration boundary. They do not turn a broad worker sandbox into an operating-system security boundary.
+- Mechanical and audit gates can block or escalate, but they do not grant publication authority.
+- The project is a local lifecycle controller, not a distributed scheduler.
 
 ## License
 
