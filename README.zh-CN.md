@@ -1,197 +1,172 @@
-# zcode-loop-orchestra — ZCode 原生多智能体控制回路与三重审计系统
-<!-- size-justified: repository README; documents architecture overview, harness layout, and operational notes. -->
+<!-- size-justified: 中文项目主页；不内联日志、清单和运行状态。 -->
+<div align="center">
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![Tests: 293 passed](https://img.shields.io/badge/Tests-293%20passed-brightgreen.svg)]()
-[![Platform: Windows 10/11 x64](https://img.shields.io/badge/Platform-Windows%2010%2F11%20x64-blue.svg)]()
-[![Python: 3.14+](https://img.shields.io/badge/Python-3.14+-informational.svg)]()
-[![ZCode: v3.10.2](https://img.shields.io/badge/ZCode-v3.10.2-blueviolet.svg)]()
+# ZCode LOOP Orchestra
 
-围绕 **ZCode** 构建的高性能、高韧性原生多智能体调度与控制回路 Harness：
-- **根会话唯一定权**：ZCode 根对话（Gemini 3.8 Flash / GLM-5.3）作为唯一规划与裁决中枢，负责任务切片与全局把控。
-- **三重审计架构 (D-25)**：
-  1. **审级 1 · C2C-P 计划前置审计**：在信息量最少、决策价值最高、Token 成本最低的规划层，通过 ChatGPT 网页端独立新线程前置反驳架构漏洞与盲区；HIGH/CRITICAL 强制拦截。
-  2. **审级 2 · 机械物化验收与防毒化回滚**：宿主自动化测试（pytest/build）机械验收；单测失败坚决执行 `git reset --hard` + `git clean -fdx` 原子硬重置，彻底根除多任务级联雪崩误杀 (P0-2)。
-  3. **审级 3 · C2C-A 结果审计门禁**：通过全限定路由直通独立的专职审查官（GLM-5.3 子代理 `af9697f5/glm-5.3`）进行只读代码审查，角色感知门禁阻断非合格晋升。
-- **8–15 物理并发执行**：非阻塞 JIT 线程池派发，私有 Git Worktree 物理隔离，具备 4 次 `.git/index.lock` 指数退避自愈与 429 速率限制重试。
-- **上下文深度瘦身**：物理关闭 14 个无关 MCP/Skills 架构注入，首轮输入 Token 净削减 **-53.38%**（单轮立省 14,336 Tokens），子代理每轮纯净控制在 2,300 Tokens 左右。
+**让 ZCode 从一次性派工，变成会持续补位、独立复核、由人掌握发布权的工程系统。**
 
----
+[![CI](https://github.com/LEO001020/zcode-loop-orchestra/actions/workflows/ci.yml/badge.svg)](https://github.com/LEO001020/zcode-loop-orchestra/actions/workflows/ci.yml)
+[![MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![Python 3.14+](https://img.shields.io/badge/Python-3.14%2B-3776AB.svg)](https://www.python.org/)
+[![ZCode v3.10.2+](https://img.shields.io/badge/ZCode-v3.10.2%2B-6E56CF.svg)](https://github.com/LEO001020/zcode-loop-orchestra)
+[![测试：293 项通过](https://img.shields.io/badge/Tests-293%20passed-brightgreen.svg)](tests/)
 
-## 核心架构视觉图
+[项目亮点](#项目亮点) · [控制回路](#控制回路就是产品) · [快速开始](#快速开始) · [为什么需要 LOOP](#为什么需要-loop) · [系统如何工作](#系统如何工作) · [English](README.md) · [文档](docs/)
 
-![ZCode-ZLoop 实时监控面板](docs/assets/dashboard.png)
+</div>
 
-<p align="center"><sub>在一个界面中清晰掌握所有本地活跃 Agent、物理执行环境、实际模型分配与并发运行状态。</sub></p>
+ZCode 本身可以启动和协调多个智能体，但一次派工不等于一套能够持续运转的工程系统。LOOP 补上的，正是长期、高并发任务所缺少的那一层：有边界的规划、隔离的工作树、机械化验收、独立复核、持续补位，以及始终由人掌握的发布权。
 
-![ZCode-ZLoop 原生架构简化拓扑](docs/assets/architecture-simplified.zh-CN.svg)
+你只需要给出任务目标和并发目标。LOOP 会把工作拆成边界明确的任务包，分派给隔离的执行者；一个执行者完成后，只要任务池和容量仍然允许，系统就会补上新的任务。根对话专注于规划和判断，脚本负责常规生命周期，独立复核阶段检查结果，监测 Web UI 展示真正正在运行的任务。你不必反复输入“继续”，任何执行者也不能自行发布结果。
 
-<p align="center"><sub>简化拓扑：根智能体做认知规划，冷调度器维持物理并发，宿主机械测试防毒化，异构模型独立审计，人类拥有最终发布权。可在浏览器打开 <a href="docs/architecture-interactive.html">docs/architecture-interactive.html</a> 体验全景交互演示。</sub></p>
+## 项目亮点
 
-![ZCode-ZLoop 原生控制回路全景](docs/assets/architecture-overview.zh-CN.svg)
+- **8–15 个物理并发工作进程：** ZCode LOOP 使用非阻塞工作进程池，并为每项任务分配独立 Git 工作树，让多个工程任务可以同时推进而不共用可写目录。
+- **设定一次，持续补位：** 调度器统计实际运行的工作进程，从有界任务池中补齐空位，直到工作完成或容量耗尽。
+- **根对话、执行者、审计者三个阶段独立选模：** 根对话负责编排，执行者负责实现，审计者负责复核。三个阶段可以分别指定模型和提供方；在本地配置支持的情况下，第三方模型也可以通过兼容网关接入。
+- **三重审计机制：** C2C-P 在派发前反驳计划，机械物化层独立执行验收并在失败时恢复暂存状态，C2C-A 在晋升前复核最终结果。
+- **首轮输入 Token 减少约 53％：** 通过裁剪无关的工具和技能元数据，让上下文更多留给真正的任务。
+- **失败原子隔离：** 候选结果在晋升前必须通过机械验收；失败的暂存状态会被恢复，避免一个坏任务污染后续波次。
+- **真正重叠执行，而不是阻塞式假并发：** 异步工作进程池与非阻塞轮询让独立任务同时推进，协调层保持可响应。
+- **Agent 监测 Web UI：** 在一个只读页面里查看任务名称、执行平面、实际模型、健康状态、证据和当前并发情况。
 
-<p align="center"><sub>完整全景：规划层前置反驳、8–15 物理并发调度、Staging 原子硬回滚、独立全限定子代理门禁与不可篡改 H0/H1 证据链。</sub></p>
+![ZCode LOOP 实时面板：活跃智能体、执行环境、模型和任务](docs/assets/dashboard.png)
 
----
+<p align="center"><sub>一眼看到真正正在运行的工作：智能体、模型、执行环境、健康状态和可用容量。</sub></p>
 
-## 1. 5 分钟极速部署
+![ZCode LOOP 简化架构：用户目标、根对话、DAG 与生命周期控制、Desktop 与无头执行、证据、人工发布和监测](docs/assets/architecture-simplified.zh-CN.svg)
 
-### 前置环境
-- Windows 10/11 x64
-- Git 2.40+ (推荐 Git Bash)
-- Python 3.14+ (系统内置 SQLite 3.50.4+ 已通过 `DELETE+EXTRA` 崩溃一致性门禁自动守护)
-- ZCode v3.10.2+
+<p align="center"><sub>一览：根对话负责判断，程序维持状态和并发，独立模型负责复核，人类决定什么可以发布。</sub></p>
 
-### 第一步：安装 ZLoop 运行环境
+## 控制回路就是产品
 
-```bash
-# 克隆仓库
+很多 harness 都能启动一批 Agent。LOOP 解决的是更难的事情：只要任务池里还有有价值的工作，就持续推动有边界的并行执行，同时隔离写入、让验收可以复现，并把最终发布权留给人。
+
+> **简单来说：** 你只需设定目标和并发目标。LOOP 创建任务包，把它们发给相互隔离的执行者，检查结果，并在有空位时启动下一个任务。等待、计数、重试和状态迁移由程序处理；只有真正需要判断的异常才返回根对话。
+>
+> **你会直接感受到：** 更多任务可以同时推进；一个执行者不能覆盖另一个执行者的工作树；失败任务不会把整批工作拖垮；发布前还有独立模型检查结果。
+
+这条控制回路强制执行以下规则：
+
+1. 根对话输出有边界的决策骨架，不亲自承担批量执行工作。
+2. 每个任务包都声明目标、授权路径、验收命令和约束条件。
+3. DAG 门禁在派发前拒绝循环依赖和重叠的写入范围。
+4. Desktop 或无头工作进程在隔离的 Git 工作树中运行，并明确固定角色、模型和推理限制。
+5. 脚本重放验收命令、核对差异边界，并记录结构化的生命周期事件。
+6. 独立审计层可以放行、要求重做、比较候选方案或升级，但不能发布。
+7. 只有实质性异常才返回根对话；最终合并和发布始终由人触发。
+8. 等待、轮询、计数、常规重试和状态迁移由脚本或状态机处理，不额外消耗协调层轮次。
+
+**模型负责判断，程序负责状态，独立模型负责复核，人类负责发布。**
+
+## 快速开始
+
+把这个仓库交给 ZCode 或其他编码智能体，然后粘贴：
+
+~~~text
+请从 https://github.com/LEO001020/zcode-loop-orchestra 安装 ZCode LOOP Orchestra。
+先阅读仓库说明，检查当前环境，向我展示试运行结果和备份方案；得到我确认后，
+再启用 LOOP 并验证安装。不要读取、显示或修改任何 API 凭据。
+~~~
+
+如果你希望自己执行：
+
+~~~powershell
 git clone https://github.com/LEO001020/zcode-loop-orchestra.git
 cd zcode-loop-orchestra
 
-# 建立虚拟环境并安装开发依赖
 python -m venv .venv
-.venv/Scripts/python -m pip install -e ".[dev]"
+.venv\Scripts\python -m pip install -e ".[dev]"
+.venv\Scripts\python -m zloop.cli doctor
+.venv\Scripts\python -m zloop.cli project attach
+.venv\Scripts\python -m zloop.cli install
+~~~
 
-# 运行环境自检（检查 SQLite 门禁与 Hook 状态）
-.venv/Scripts/python -m zloop.cli doctor
-```
+使用 <code>zloop --help</code> 查看可用命令。只有环境检查和规划门禁通过后，才开始派发波次。
 
-### 第二步：纳管当前工作区并安装 ZCode 物理 Hooks
+## 为什么需要 LOOP
 
-```bash
-# 将当前工程纳管至 ZLoop 数据平面
-.venv/Scripts/python -m zloop.cli project attach
+LOOP 不只是“再启动几个 Agent”。当原生 harness 承担持续、并行的工程任务时，会出现一组具体问题；LOOP 的每项设计都对应一个问题：
 
-# 安装用户级 ZCode hooks（SessionStart, UserPromptSubmit, PostToolUse 等 5 大事件）
-.venv/Scripts/python -m zloop.cli install
-```
+| 原生 harness 的局限 | LOOP 的做法 | 实际收益 |
+|---|---|---|
+| 一批 Agent 会随着任务完成逐渐退出；靠提示词不能稳定补齐并发数。 | 统计实际运行的工作进程，从有界任务池中补上空位。 | **持续保持有用并发**，不用反复催促“再启动几个”。 |
+| 同一个模型既写代码又检查自己的结果，容易保留相同的推理盲点。 | 将根对话、执行者和审计者拆成三个独立模型阶段。 | **用不同模型族交叉检查**，降低相关性错误。 |
+| 多个任务共用可写目录，容易互相覆盖或争抢 Git 状态。 | 每项任务使用独立 Git 工作树，合并由受控写入者串行完成。 | **避免执行者相互覆盖。** |
+| 同步驱动器在第一个任务上等待，其他任务只是“看起来并行”。 | 使用非阻塞轮询和异步工作进程池。 | **真正重叠执行**，协调层不会被首个任务拖住。 |
+| 一个候选结果验收失败，却把有问题的暂存状态带进后续任务。 | 晋升前做机械验收，失败时原子恢复暂存状态。 | **把失败限制在单项任务内**，避免级联污染。 |
+| 协调层把昂贵轮次花在上下文整理和日常生命周期工作上。 | 裁剪无关元数据，把等待、计数、重试和状态迁移交给脚本。 | **让模型把容量用在真正的判断上**，同时为任务本身留下更多上下文。 |
+| 随机名称和分散进程让人看不懂系统到底在做什么。 | 统一记录语义任务名、实际模型、运行环境、证据和只读监测视图。 | **知道每个任务正在做什么**，也知道为什么出现空位。 |
 
-### 第三步：部署纯净子代理 Profiles
+8–15 个并发和首轮输入减少约 53％都是本项目环境中的实测数据，不是 ZCode 的官方限制，也不保证所有模型提供方和电脑都能达到同样的负载。请根据自己的模型容量和硬件调整目标。
 
-将经过架构裁剪、剥离了 26 个 MCP 工具负荷的两个原生子代理配置文件复制到用户代理根目录：
+## 系统如何工作
 
-```bash
-mkdir -p "$USERPROFILE/.zcode/agents"
-cp plugin/agents/zloop-worker.md "$USERPROFILE/.zcode/agents/"
-cp plugin/agents/zloop-auditor.md "$USERPROFILE/.zcode/agents/"
-```
+![ZCode LOOP 完整控制回路架构：根对话、计划审计、确定性生命周期控制、执行平面、机械证据、独立复核、合并、人工发布和只读监测](docs/assets/architecture-overview.zh-CN.svg)
 
-*注意：`zloop-auditor.md` 已配置为全限定模型标识 `af9697f5-a1f2-4616-8350-e14311d14fda/glm-5.3`，在新会话中将 100% 物理直通你的独立 GLM-5.3 审查节点。*
+LOOP 将认知、执行、证据、复核、合并和发布权分开：
 
----
+- **根对话阶段：** 把用户目标变成边界明确的计划，并裁决实质性不确定问题。
+- **执行阶段：** 通过 ZCode 工作进程池，在隔离的 Git 工作树中执行任务包。
+- **机械阶段：** 独立运行测试、Schema、哈希和差异边界检查，不接受执行者自报的结果作为唯一证据。
+- **审计阶段：** 使用独立指定的模型检查证据，可以放行、要求重做、排序候选或升级。
+- **合并阶段与人工阶段：** 已验收的写入由合并队列串行处理；只有人可以触发最终合并或发布。
+- **Agent 监测 Web UI：** 把执行名册、生命周期事件、证据和容量汇总成只读的运行视图。
 
-## 2. 为什么需要 ZCode-ZLoop
+### 模型路由
 
-许多多智能体框架仅仅是简单的“外层嵌套调用”，在单机落地长程、高并发、复杂工程任务时，往往会遭遇四大致命泥潭：
+根对话、执行者和审计者是三个独立阶段，不是一个继承而来的模型。你可以在项目配置中分别指定各阶段的模型；如果使用第三方模型，则通过本地 ZCode 支持的兼容网关接入。这样，能力最强的模型可以专注于规划和裁决，更快的模型负责边界明确的执行，独立模型则检查最终结果。
 
-1. **同构偏好与自我盲区**：单一大模型体系往往倾向于给自己写出的 Bug 点赞（Correlated Errors 实证：350+ 模型越强错误越同质）。ZLoop 通过 **ChatGPT 规划反驳 + GLM-5.3 独立代码审查** 实施异构制衡；
-2. **多任务并发级联毒化**：多任务同时合入公共分支时，一旦某任务单测失败且残留有毒 Commit，后续原本正确的任务全被连环击毙。ZLoop 的 **Staging 原子硬回滚（`git reset --hard` + `git clean -fdx`）** 确保单点失败零扩散；
-3. **驱动循环同步假并发**：传统实现往往在首个任务的同步等待上卡死主线程。ZLoop 引入 **JIT 异步线程池与非阻塞 `poll()` 机制**，实现毫秒级轮询与真正 8–15 物理并发重叠执行；
-4. **巨量上下文税**：常规客户端默认注入数十个 MCP 工具与技能元数据，导致每轮对话初始直接背负 2.6 万 Tokens。ZLoop 通过**物理禁用无关 Skills 与 Profile 白名单过滤**，使首轮输入骤降至 1.2 万 Tokens，子代理压至 2,300 Tokens。
+### 仓库结构
 
----
+~~~text
+src/zloop/        控制平面、工作进程后端、生命周期、证据与 CLI
+spec/             架构契约、决策记录、不变量和进度记录
+tests/            单元、集成、并发与混沌测试
+plugin/           ZCode 插件分发文件与 hooks
+docs/             操作文档和架构资料
+tools/prompt-lab/ 提示词实验与上下文预算检查
+pyproject.toml    构建元数据与依赖
+~~~
 
-## 3. 日常开发标准操作流水线 (Mode G)
+## 安装与运行
 
-### 步骤 1：开启任务阶段并提出 Wave 提案
+推荐使用“智能体引导、脚本执行”的安装方式。脚本会检查环境、创建备份、只安装受管理的 hooks 和配置，并提供恢复路径。仓库不包含已安装的 ZCode 二进制文件。
 
-```bash
-# 启动业务 Run
-zloop run start "构建核心支付模块"
+### 环境要求
 
-# 开启 HIGH 风险等级阶段（激活全套三重审计门禁）
-zloop stage begin "payment_v1" --risk HIGH
+- Windows 10/11 x64
+- ZCode v3.10.2 或更高版本
+- Python 3.14 或更高版本
+- Git 2.40 或更高版本
+- 可用的 ZCode 登录状态或兼容模型网关
 
-# 校验并提交不重叠的切片任务包
+### 日常流程
+
+~~~bash
+zloop run start "Implement the next bounded change"
+zloop stage begin "stage-01" --risk HIGH
 zloop wave propose packets.json
-```
-
-### 步骤 2：C2C-P 规划前置审查
-
-```bash
-# 生成脱敏的计划审查包（包含目标、约束与未知项，严格 ≤8,000 字符）
-zloop c2c prepare --role plan --file plan_summary.txt
-
-# 将包复制到 ChatGPT 网页端独立新线程获取反驳意见，录入系统
-zloop c2c record --c2c C2C001 --identity surface=chatgpt_web --file chatgpt_verdict.txt
-```
-
-### 步骤 3：发射并发任务 (8–15 并发)
-
-```bash
-# 计划门放行，并发在各自私有 Worktree 中执行编码与本地验证
 zloop wave start W1 --backend codex
-```
-
-### 步骤 4：机械验收测试与 C2C-A 结果审计
-
-```bash
-# 宿主自动执行 pytest/build 机械验收；失败自动硬回滚
-# 验收通过后，准备 Diff 审查包
-zloop c2c prepare --role result --file diff.txt
-
-# 由 GLM-5.3 专职子代理审查并录入结果
-zloop c2c record --c2c C2C002 --identity surface=glm5.3 --file review_pass.txt
-
-# 角色感知门禁确认 role=result 就位，安全快进晋升合入主分支
 zloop stage promote S01
-```
+~~~
 
----
+本地运行完整测试：
 
-## 4. 仓库拓扑与模块分布
+~~~powershell
+.venv\Scripts\python -m pytest tests -q
+~~~
 
-```
-zcode-loop-orchestra/
-├── src/zloop/
-│   ├── backend/          # CodexSdkBackend (异步线程池, poll 轮询, 429 退避)
-│   ├── metrics/          # 自动化运维分析器 (tokens, latency, concurrency, c2c_stats)
-│   ├── research/         # Kimi 搜索器化信息管道 (disabled_tools 保护)
-│   ├── c2c.py            # 跨模型审计包序列化、脱敏与 Hash 校验
-│   ├── cli.py            # 统一 CLI 命令行系统 (run, stage, wave, c2c, install)
-│   ├── db.py             # SQLite S 库 (DELETE+EXTRA 门禁, busy_timeout=30s)
-│   ├── evidence.py       # 不可篡改 H0 NDJSON 事件流与 CAS Blob 存储
-│   ├── hook.py           # 具备 cwd 项目作用域安全过滤的物理进程 Hook
-│   ├── materialize.py    # 变更物化、宿主验收与原子硬重置防毒化回滚
-│   ├── promote.py        # CAS Fast-Forward 快速合并与 Git 物理判据
-│   ├── supervisor.py     # 冷调度器、50ms 错峰发射与阶段版本栅栏
-│   └── workspace.py      # Git Worktree 隔离与 index.lock 退避自愈
-├── spec/                 # 权威设计规范全书 (VOL-00 至 VOL-22)
-│   ├── DECISIONS.md      # 架构决议日志 (D-1 至 D-25 完整演进证据链)
-│   ├── PROGRESS.md       # 里程碑与物理验收对账账本
-│   └── VOL-*.md          # 宪章、数据模型、状态机、平台契约与混沌测试
-├── tests/                # 293 项全量自动化测试套件 (覆盖单元、集成与并发)
-├── tools/prompt-lab/     # SHA256 门禁绑定、原像锚点系统提示词实验台
-├── plugin/               # ZCode 用户级精简子代理 Profiles (worker / auditor)
-├── docs/                 # 详细操作指南、接口契约与交互式架构网页
-└── pyproject.toml        # 构建配置与依赖锁定
-```
+当前仓库验证包含 293 项测试。提供方是否可用、本地凭据和机器能够维持的并发量，都取决于具体部署环境。
 
----
+## 安全与边界
 
-## 5. 生产级自动化验证与不变量保证
+- hooks 以当前用户身份运行，不会自动提升权限。
+- 模型提供方凭据保存在用户自己的 ZCode 或网关配置中，不进入本仓库。
+- 机械门禁和审计门可以阻断或升级，但不会授予发布权限。
+- 项目面向单机和受控的本地工作区，不是分布式调度器。
+- 文档中的并发和 Token 数据是本项目环境的测量结果，不是 ZCode 或任何模型提供方的官方限制。
 
-ZLoop 全量测试套件严格执行对 **架构不变量 I1–I44** 的物理守卫：
+## 许可证
 
-```bash
-# 运行全库 293 项自动化测试
-.venv/Scripts/python -m pytest tests -v
-```
-
-核心不变量覆盖：
-- **I1**：`disable(ZLoop) => native ZCode semantics restored`（卸载即恢复原生，零污染残留）。
-- **I3**：H0 记录失败走柔性降级（`history_degraded=true`，原生认知继续执行）。
-- **I4**：S 控制库事务失败走坚决阻断（Fail-Closed，立刻停止生命周期变更）。
-- **I6**：Packet 验收受 `stage_revision ∧ packet_revision ∧ active_launch_id` 三重版本栅栏守卫。
-- **I13**：任何敏感凭据绝不在未脱敏前落盘或进入日志。
-- **I30/I39**：晋升合入必须基于干净工作树与完全匹配的基线哈希，执行原子快进。
-- **I34**：每个物理任务独占独立可写的 Git Worktree。
-- **P0-1**：非阻塞 `poll()` 彻底粉碎单线程假并发死锁。
-- **P0-2**：验收失败立即硬重置（`git reset --hard` + `git clean -fdx`），保证 Staging 绝对洁净。
-
----
-
-## 6. 开源许可
-
-本项目基于 [MIT License](LICENSE) 开源许可协议发布。
+ZCode LOOP Orchestra 基于 [MIT License](LICENSE) 发布。
