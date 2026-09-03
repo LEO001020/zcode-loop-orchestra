@@ -18,6 +18,22 @@ Multi-agent orchestration harness and resilient control loop built natively arou
 
 ---
 
+## Architectural Visuals
+
+![ZCode-ZLoop Live Dashboard](docs/assets/dashboard.en.png)
+
+<p align="center"><sub>Unified overview of all active agents, execution runtimes, assigned models, and concurrent task workloads.</sub></p>
+
+![ZCode-ZLoop Simplified Architecture](docs/assets/architecture-simplified.en.svg)
+
+<p align="center"><sub>Simplified topology: root agent plans, cold supervisor orchestrates physical concurrency, mechanical tests eliminate poison, heterogeneous model audits, and humans retain release control. Open <a href="docs/architecture-interactive.html">docs/architecture-interactive.html</a> for interactive presentation.</sub></p>
+
+![ZCode-ZLoop Full Control Loop Overview](docs/assets/architecture-overview.en.svg)
+
+<p align="center"><sub>Full control loop: pre-planning counter-plan review, 8–15 async worktree concurrency, atomic staging rollback, isolated GLM-5.3 auditor gate, and immutable H0/H1 evidence.</sub></p>
+
+---
+
 ## 1. Quick Start (5-Minute Deployment)
 
 ### Prerequisites
