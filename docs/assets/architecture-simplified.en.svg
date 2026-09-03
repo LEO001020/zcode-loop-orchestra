@@ -82,7 +82,7 @@
 
   <!-- Header -->
   <text class="eyebrow" x="72" y="52">SYSTEM ARCHITECTURE · SIMPLIFIED TOPOLOGY</text>
-  <text class="title" x="72" y="94">ZCode-ZLoop Native Triple-Audit & Concurrency Loop</text>
+  <text class="title" x="72" y="94">ZCode-ZLoop Native Triple-Audit &amp; Concurrency Loop</text>
   <text class="subtitle" x="72" y="124">Pre-Planning Counter-Plan · 8–15 Async Worktree Concurrency · Atomic Staging Rollback · Independent GLM-5.3 Gate</text>
 
   <!-- Metrics Bar -->
@@ -118,7 +118,7 @@
   <!-- Flow Col 1: 任务入口与根协调 -->
   <g class="raised">
     <rect class="box" x="72" y="260" rx="20" ry="20" width="310" height="880"/>
-    <text class="stage" x="96" y="295">STAGE 1 · PLANNING & DISPATCH</text>
+    <text class="stage" x="96" y="295">STAGE 1 · PLANNING &amp; DISPATCH</text>
 
     <!-- User / Prompt -->
     <rect class="blue-card" x="96" y="320" rx="14" ry="14" width="262" height="110"/>
@@ -184,7 +184,7 @@
 
     <rect class="green-card" x="468" y="740" rx="10" ry="10" width="272" height="65"/>
     <text fill="var(--ink)" font-size="14.5" font-weight="650" x="484" y="767">Worker 8 (worktree_s01_p08)</text>
-    <text class="node-sub" x="484" y="787">Emits filesystem delta & candidate SHA</text>
+    <text class="node-sub" x="484" y="787">Emits filesystem delta &amp; candidate SHA</text>
 
     <rect class="green-card" x="468" y="820" rx="10" ry="10" width="272" height="65"/>
     <text fill="var(--ink)" font-size="14.5" font-weight="650" x="484" y="847">Worker 15 (worktree_s01_p15)</text>
@@ -204,7 +204,7 @@
   <!-- Flow Col 3: 物化与原子回滚防线 -->
   <g class="raised">
     <rect class="box" x="824" y="260" rx="20" ry="20" width="340" height="880"/>
-    <text class="stage" x="848" y="295">STAGE 3 · MATERIALIZATION & DEFENSE</text>
+    <text class="stage" x="848" y="295">STAGE 3 · MATERIALIZATION &amp; DEFENSE</text>
 
     <!-- Staging Tree -->
     <rect class="box" x="848" y="320" rx="14" ry="14" width="292" height="120"/>
@@ -245,7 +245,7 @@
   <!-- Flow Col 4: 结果审计与晋升合入 -->
   <g class="raised">
     <rect class="box" x="1204" y="260" rx="20" ry="20" width="324" height="880"/>
-    <text class="stage" x="1228" y="295">STAGE 4 · AUDIT & CANONICAL PROMOTION</text>
+    <text class="stage" x="1228" y="295">STAGE 4 · AUDIT &amp; CANONICAL PROMOTION</text>
 
     <!-- Gate 3: C2C-A Result Audit -->
     <rect class="violet-card" x="1228" y="320" rx="14" ry="14" width="276" height="240"/>
@@ -279,8 +279,8 @@
     <rect class="box" x="1228" y="950" rx="14" ry="14" width="276" height="150"/>
     <text class="node-title" x="1248" y="982">Production-Verified Deliverable</text>
     <text class="node-sub" x="1248" y="1006">Zero poison leakage · Zero unauthorized write</text>
-    <text class="node-sub" x="1248" y="1026">Counter-plan, mechanical, & heterogeneous verified</text>
-    <text class="node-sub" x="1248" y="1046">Fully reproducible & observable history</text>
+    <text class="node-sub" x="1248" y="1026">Counter-plan, mechanical, &amp; heterogeneous verified</text>
+    <text class="node-sub" x="1248" y="1046">Fully reproducible &amp; observable history</text>
     <text fill="var(--green)" font-weight="700" font-size="13" x="1248" y="1076">PRODUCTION GRADE VERIFIED</text>
   </g>
 

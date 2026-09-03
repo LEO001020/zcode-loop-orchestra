@@ -148,7 +148,7 @@
   <g class="hero">
     <rect class="blue-card" x="220" y="354" rx="22" ry="22" width="1160" height="74"/>
     <rect x="242" y="369" rx="10" ry="10" width="146" height="23" fill="var(--blue-soft)" stroke="var(--blue-stroke)"/>
-    <text class="chip-text blue-text" x="315" y="384.5" text-anchor="middle">Cognition & Planning</text>
+    <text class="chip-text blue-text" x="315" y="384.5" text-anchor="middle">Cognition &amp; Planning</text>
     <text class="node-title" x="800" y="382" text-anchor="middle">ZCode Root Session (Gemini 3.8 Flash / Provider 3f0e0bfa)</text>
     <text class="node-sub" x="800" y="407" text-anchor="middle">Sole cognitive authority · Lean S1 pruned runtime (12.5k tokens) · Task decomposition into Packets</text>
   </g>
@@ -165,7 +165,7 @@
       <rect x="247" y="520" width="265" height="23" rx="11.5" fill="var(--surface-2)" stroke="var(--line)"/>
       <text class="small" x="379.5" y="535" text-anchor="middle">zloop c2c prepare --role plan</text>
       <rect x="522" y="520" width="255" height="23" rx="11.5" fill="var(--surface-2)" stroke="var(--line)"/>
-      <text class="small" x="649.5" y="535" text-anchor="middle">≤8,000 chars bounded & redacted</text>
+      <text class="small" x="649.5" y="535" text-anchor="middle">≤8,000 chars bounded &amp; redacted</text>
       <rect x="787" y="520" width="285" height="23" rx="11.5" fill="var(--surface-2)" stroke="var(--line)"/>
       <text class="small" x="929.5" y="535" text-anchor="middle">zloop c2c record --c2c &lt;id&gt;</text>
       <rect x="1082" y="520" width="270" height="23" rx="11.5" fill="var(--surface-2)" stroke="var(--line)"/>
@@ -174,7 +174,7 @@
   </g>
   <path class="connector-green" d="M800 554 L800 576"/>
 
-  <!-- Stage 3: Control & Scheduling -->
+  <!-- Stage 3: Control &amp; Scheduling -->
   <g class="raised">
     <rect class="amber-card" x="220" y="576" rx="22" ry="22" width="1160" height="98"/>
     <rect x="242" y="591" rx="10" ry="10" width="146" height="23" fill="var(--amber-soft)" stroke="var(--amber-stroke)"/>
@@ -217,7 +217,7 @@
   </g>
   <path class="connector" d="M800 802 L800 824"/>
 
-  <!-- Stage 5: Materialization & Rollback -->
+  <!-- Stage 5: Materialization &amp; Rollback -->
   <g class="raised">
     <rect class="box" x="220" y="824" rx="22" ry="22" width="1160" height="96"/>
     <rect x="242" y="839" rx="10" ry="10" width="168" height="23" fill="var(--violet-soft)" stroke="var(--violet-stroke)"/>
@@ -257,11 +257,11 @@
   </g>
   <path class="connector" d="M800 1136 L800 1158"/>
 
-  <!-- Stage 8: Observability & Evidence -->
+  <!-- Stage 8: Observability &amp; Evidence -->
   <g class="raised">
     <rect class="box" x="220" y="1158" rx="20" ry="20" width="1160" height="76"/>
     <text class="node-title" x="800" y="1186" text-anchor="middle">不可篡改证据面 (H0/H1) &amp; 自动化运维指标 (Metrics)</text>
-    <text class="node-sub" x="800" y="1210" text-anchor="middle">H0 NDJSON stream · CAS blob overflow · zloop.metrics throughput / latency / token reduction & concurrency overlap</text>
+    <text class="node-sub" x="800" y="1210" text-anchor="middle">H0 NDJSON stream · CAS blob overflow · zloop.metrics throughput / latency / token reduction &amp; concurrency overlap</text>
   </g>
 
   <!-- Footer -->
