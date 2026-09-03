@@ -7,63 +7,108 @@
   <style>
     :root {
       color-scheme: light;
-      --bg: #f7f8f6;
+      --bg: #f7f7f5;
       --surface: #ffffff;
-      --ink: #17201d;
-      --muted: #5d6a65;
-      --line: #dbe2de;
-      --green: #2b8a63;
-      --green-soft: #f1f8f4;
-      --amber: #b37a2c;
-      --amber-soft: #fff7e8;
-      --blue: #4c76b9;
-      --blue-soft: #f2f6fc;
-      font-family: "Microsoft YaHei UI", "Microsoft YaHei", "PingFang SC",
-        "Noto Sans CJK SC", Arial, sans-serif;
-      background: var(--bg);
+      --ink: #151619;
+      --muted: #626872;
+      --line: #d9dce1;
+      --blue: #1267e5;
+      --blue-soft: #eef5ff;
+      --green: #168a50;
+      --green-soft: #ebf8f0;
+      --amber: #a86d00;
+      --amber-soft: #fff6de;
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display",
+        "SF Pro Text", "Segoe UI", "Microsoft YaHei UI", "Microsoft YaHei",
+        Arial, sans-serif;
     }
-
     * { box-sizing: border-box; }
     body {
       margin: 0;
       color: var(--ink);
       background:
-        radial-gradient(circle at 100% 0%, #edf2ee 0, transparent 28rem),
+        radial-gradient(circle at 100% 0%, #eef1f5 0, transparent 29rem),
         var(--bg);
-      line-height: 1.6;
+      line-height: 1.65;
     }
-    main { width: min(1180px, calc(100% - 40px)); margin: 0 auto; padding: 64px 0 88px; }
-    header { max-width: 850px; margin-bottom: 38px; }
-    .kicker { color: #8d9892; font-size: 12px; font-weight: 500; letter-spacing: .16em; }
-    h1 { margin: 12px 0 10px; font-size: clamp(2rem, 4vw, 3.25rem); line-height: 1.08; letter-spacing: -.045em; }
+    main {
+      width: min(1180px, calc(100% - 40px));
+      margin: 0 auto;
+      padding: 64px 0 88px;
+    }
+    header { max-width: 900px; }
+    .kicker {
+      color: #989da6;
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: .16em;
+    }
+    h1 {
+      margin: 12px 0 10px;
+      font-size: clamp(2rem, 4vw, 3.25rem);
+      line-height: 1.08;
+      letter-spacing: -.045em;
+    }
     .lead { margin: 0; color: var(--muted); font-size: 1.08rem; }
-    .nav { display: flex; flex-wrap: wrap; gap: 10px 18px; margin-top: 22px; font-size: .92rem; }
-    a { color: #2865b8; }
-    .callout {
-      margin: 28px 0 52px; padding: 20px 24px; border-left: 5px solid var(--green);
-      border-radius: 18px; background: var(--green-soft); border-top: 1px solid #bfdfcc;
-      border-right: 1px solid #bfdfcc; border-bottom: 1px solid #bfdfcc;
+    nav {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px 18px;
+      margin-top: 22px;
+      font-size: .92rem;
     }
-    .callout strong { display: block; font-size: 1.08rem; }
-    .callout span { display: block; color: #527164; margin-top: 3px; }
+    a { color: #2865b8; }
+    .summary {
+      margin: 30px 0 54px;
+      padding: 20px 24px;
+      border: 1px solid #c3e9d2;
+      border-left: 5px solid var(--green);
+      border-radius: 18px;
+      background: var(--green-soft);
+    }
+    .summary strong { display: block; font-size: 1.08rem; }
+    .summary span { display: block; margin-top: 3px; color: #527164; }
     section { margin-top: 58px; }
     h2 { margin: 0 0 8px; font-size: 1.55rem; letter-spacing: -.025em; }
     .section-lead { margin: 0 0 20px; color: var(--muted); }
-    figure { margin: 24px 0 0; padding: 18px; background: var(--surface); border: 1px solid var(--line); border-radius: 22px; box-shadow: 0 12px 28px rgba(114, 128, 121, .08); }
+    figure {
+      margin: 24px 0 0;
+      padding: 18px;
+      border: 1px solid var(--line);
+      border-radius: 22px;
+      background: var(--surface);
+      box-shadow: 0 12px 28px rgba(122, 132, 146, .08);
+    }
     img { display: block; width: 100%; height: auto; border-radius: 12px; }
     figcaption { margin: 13px 4px 0; color: var(--muted); font-size: .9rem; }
-    .notes { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; margin-top: 24px; }
-    .note { padding: 20px; background: var(--surface); border: 1px solid var(--line); border-radius: 18px; }
-    .note h3 { margin: 0 0 6px; font-size: 1.02rem; }
-    .note p { margin: 0; color: var(--muted); font-size: .92rem; }
-    .green { border-top: 4px solid var(--green); }
-    .amber { border-top: 4px solid var(--amber); }
-    .blue { border-top: 4px solid var(--blue); }
-    footer { margin-top: 56px; padding-top: 18px; border-top: 1px solid var(--line); color: #8d9892; font-size: .86rem; }
+    .benefits {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 16px;
+      margin-top: 24px;
+    }
+    .benefit {
+      padding: 20px;
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      background: var(--surface);
+    }
+    .benefit h3 { margin: 0 0 6px; font-size: 1.02rem; }
+    .benefit p { margin: 0; color: var(--muted); font-size: .92rem; }
+    .memory { border-top: 4px solid var(--blue); }
+    .parallel { border-top: 4px solid var(--green); }
+    .release { border-top: 4px solid var(--amber); }
+    footer {
+      margin-top: 56px;
+      padding-top: 18px;
+      border-top: 1px solid var(--line);
+      color: #8b929a;
+      font-size: .86rem;
+    }
     @media (max-width: 760px) {
       main { width: min(100% - 24px, 640px); padding-top: 36px; }
       figure { padding: 8px; border-radius: 16px; }
-      .notes { grid-template-columns: 1fr; }
+      .benefits { grid-template-columns: 1fr; }
     }
   </style>
 </head>
@@ -71,59 +116,59 @@
   <main>
     <header>
       <div class="kicker">ZCODE LOOP ORCHESTRA  /  ARCHITECTURE GUIDE</div>
-      <h1>ZCode 继续思考，ZLoop 把运行管起来</h1>
-      <p class="lead">从目标、任务包和隔离执行，到重新验收、失败恢复与人工晋升：这两张图展示 ZCode LOOP 真正承担的控制边界。</p>
-      <nav class="nav" aria-label="语言与仓库链接">
+      <h1>先看它能为你解决什么，再看内部如何实现</h1>
+      <p class="lead">ZCode 继续负责理解和判断；ZLoop 把持久记忆、任务调度、隔离执行、结果检查、中断恢复和人工合并连接成一条完整工作流。</p>
+      <nav aria-label="语言与仓库链接">
         <a href="../README.zh-CN.md">中文 README</a>
         <a href="../README.md">English README</a>
-        <a href="assets/architecture-overview.zh-CN.svg">完整架构图</a>
-        <a href="assets/architecture-simplified.zh-CN.svg">五步简化图</a>
+        <a href="assets/architecture-simplified.zh-CN.svg">简化图</a>
+        <a href="assets/architecture-overview.zh-CN.svg">完整图</a>
       </nav>
     </header>
 
-    <div class="callout">
-      <strong>模型负责判断，程序负责状态，机械现实负责验收，人类负责发布。</strong>
-      <span>主流程回答“接下来发生什么”；右侧服务回答“这些结果凭什么可信”。</span>
+    <div class="summary">
+      <strong>模型负责判断，程序负责状态，可重复的检查决定结果是否合格，人类负责发布。</strong>
+      <span>不要求普通用户先理解内部数据库、状态编号或模块缩写。</span>
     </div>
 
-    <section id="overview">
-      <h2>完整产品流程</h2>
-      <p class="section-lead">从用户目标到人工晋升，右侧同时说明持久化状态、身份围栏、证据记录和审查包的边界。</p>
-      <figure>
-        <img src="assets/architecture-overview.zh-CN.svg" alt="ZCode LOOP 完整产品架构图">
-        <figcaption>完整图适合了解系统如何把动作和保证连接起来。</figcaption>
-      </figure>
-    </section>
-
     <section id="simple">
-      <h2>五步产品流程</h2>
-      <p class="section-lead">只记住五件事：输入目标、准备任务、持续推进、验收候选、人工发布。</p>
+      <h2>先用一张图理解产品</h2>
+      <p class="section-lead">你给出目标，主 Agent 制定计划；ZLoop 保存状态并调度彼此隔离的编码 Agent；系统重新检查真实结果，独立模型负责审查；最后由人决定是否合并。</p>
       <figure>
-        <img src="assets/architecture-simplified.zh-CN.svg" alt="ZCode LOOP 五步简化产品流程图">
-        <figcaption>简化图适合第一次认识 LOOP，省略了内部模块名称。</figcaption>
+        <img src="assets/architecture-simplified.zh-CN.svg" alt="ZCode LOOP 简化架构图">
+        <figcaption>这张图面向第一次接触项目的人，只保留 AI 工程中的通用概念。</figcaption>
       </figure>
     </section>
 
-    <section id="boundaries">
-      <h2>读图时只需记住三个边界</h2>
-      <div class="notes">
-        <article class="note green">
-          <h3>工作边界</h3>
-          <p>每次启动使用独立工作目录；差异先回到 staging，规范分支不作为 worker 的直接写入目标。</p>
+    <section id="benefits">
+      <h2>三个最直接的变化</h2>
+      <div class="benefits">
+        <article class="benefit memory">
+          <h3>任务可以恢复</h3>
+          <p>上下文压缩、重启或中断后，仍可从已保存的状态和证据继续。</p>
         </article>
-        <article class="note blue">
-          <h3>验收边界</h3>
-          <p>执行者的“完成”只是报告。LOOP 会在 staging 重新检查路径、哈希、Schema 和验收命令。</p>
+        <article class="benefit parallel">
+          <h3>并行工作彼此隔离</h3>
+          <p>每个执行 Agent 使用独立工作区，不能互相覆盖或直接修改主分支。</p>
         </article>
-        <article class="note amber">
-          <h3>发布边界</h3>
-          <p>失败候选恢复并阻塞，审查可以升级；只有人执行最终的 <code>zloop stage promote</code>。</p>
+        <article class="benefit release">
+          <h3>结果先验收再发布</h3>
+          <p>检查实际改动和测试；失败就恢复，最终合并仍由人触发。</p>
         </article>
       </div>
     </section>
 
+    <section id="overview">
+      <h2>再看完整工作流</h2>
+      <p class="section-lead">完整图补充任务依赖、自动调度、外部研究、独立模型审查、安全集成区和中断恢复，但仍不使用项目内部黑话。</p>
+      <figure>
+        <img src="assets/architecture-overview.zh-CN.svg" alt="ZCode LOOP 完整架构图">
+        <figcaption>主流程回答“接下来发生什么”；底部恢复层回答“中断以后怎样继续”。</figcaption>
+      </figure>
+    </section>
+
     <footer>
-      ZCode LOOP Orchestra 是本地生命周期控制层；具体模型、提供方和 worker 并发能力取决于你的 ZCode 配置与运行环境。
+      ZCode LOOP Orchestra 是独立社区项目。它是一套本地控制层，不替代 ZCode，也不包含模型服务商凭据。
     </footer>
   </main>
 </body>

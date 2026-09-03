@@ -1,158 +1,117 @@
-<svg id="zloop-simplified-zh" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1180" role="img" aria-labelledby="title desc">
-  <title id="title">ZCode LOOP Orchestra：五步产品流程</title>
-  <desc id="desc">一张面向普通用户的五步流程图：从用户目标开始，由 ZCode 形成计划，ZLoop 持续推进隔离的任务执行，重新验收结果，最后由人触发发布。</desc>
+<svg id="zloop-simple-zh" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1220" role="img" aria-labelledby="title desc">
+  <title id="title">ZCode LOOP Orchestra 简化架构</title>
+  <desc id="desc">ZCode 负责理解目标，ZLoop 负责保存状态、调度隔离的执行 Agent、检查真实改动、安排独立复核和失败恢复，最终由人决定是否合并。</desc>
   <defs>
-    <filter id="shadow-soft-zh" x="-12%" y="-18%" width="124%" height="146%">
-      <feDropShadow dx="0" dy="7" stdDeviation="12" flood-color="#728079" flood-opacity=".08"/>
+    <linearGradient id="simple-glow-zh" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#ffffff"/>
+      <stop offset="1" stop-color="#eef1f5"/>
+    </linearGradient>
+    <linearGradient id="simple-blue-zh" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#ffffff"/>
+      <stop offset="1" stop-color="#eef5ff"/>
+    </linearGradient>
+    <linearGradient id="simple-violet-zh" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#ffffff"/>
+      <stop offset="1" stop-color="#f4f0ff"/>
+    </linearGradient>
+    <filter id="simple-shadow-zh" x="-18%" y="-24%" width="136%" height="166%">
+      <feDropShadow dx="0" dy="10" stdDeviation="17" flood-color="#7a8492" flood-opacity=".12"/>
     </filter>
-    <marker id="arrow-zh" markerWidth="12" markerHeight="12" refX="9" refY="6" orient="auto" markerUnits="strokeWidth">
-      <path d="M0 0L12 6L0 12Z" fill="#9aa6a0"/>
-    </marker>
-    <marker id="arrow-green-zh" markerWidth="12" markerHeight="12" refX="9" refY="6" orient="auto" markerUnits="strokeWidth">
-      <path d="M0 0L12 6L0 12Z" fill="#2b8a63"/>
+    <marker id="simple-arrow-zh" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto" markerUnits="strokeWidth">
+      <path d="M0 0L10 5L0 10Z" fill="#8f98a5"/>
     </marker>
   </defs>
   <style>
-    #zloop-simplified-zh{font-family:"Microsoft YaHei UI","Microsoft YaHei","PingFang SC","Noto Sans CJK SC",Arial,sans-serif}
-    .page{fill:#f7f8f6}.decor{fill:#eef2ef}
-    .eyebrow{fill:#8d9892;font-size:12px;font-weight:500;letter-spacing:2px}
-    .title{fill:#17201d;font-size:48px;font-weight:500;letter-spacing:-1.8px}
-    .subtitle{fill:#5d6a65;font-size:18px;font-weight:400}
-    .hero-label{fill:#8d9892;font-size:11px;font-weight:500;letter-spacing:1.7px}
-    .hero-title{fill:#17201d;font-size:17px;font-weight:500}
-    .rail{fill:#8d9892;font-size:12px;font-weight:500;letter-spacing:1.2px}
-    .step-title{fill:#17201d;font-size:22px;font-weight:500;letter-spacing:-.5px}
-    .step-body{fill:#5d6a65;font-size:15px;font-weight:400}
-    .step-note{fill:#8d9892;font-size:12px;font-weight:400}
-    .outcome-title{fill:#17201d;font-size:18px;font-weight:500}
-    .outcome-body{fill:#5d6a65;font-size:14px;font-weight:400}
-    .foot{fill:#8d9892;font-size:12px;font-weight:400}
-    .card{fill:#fff;stroke:#dbe2de;stroke-width:1.2;filter:url(#shadow-soft-zh)}
-    .card-blue{fill:#f2f6fc;stroke:#c9d8ec;filter:url(#shadow-soft-zh)}
-    .card-green{fill:#f1f8f4;stroke:#bfdfcc;filter:url(#shadow-soft-zh)}
-    .card-amber{fill:#fff7e8;stroke:#ecd39e;filter:url(#shadow-soft-zh)}
-    .card-warm{fill:#fbfcfa;stroke:#d5e2da;filter:url(#shadow-soft-zh)}
-    .number-blue{fill:#4c76b9}.number-green{fill:#2b8a63}.number-amber{fill:#b37a2c}.number-ink{fill:#53615b}
-    .number{fill:#fff;font-size:13px;font-weight:500}
-    .hairline{stroke:#dce3df;stroke-width:1}
-    .flow{fill:none;stroke:#9aa6a0;stroke-width:1.8;stroke-linecap:round;marker-end:url(#arrow-zh)}
-    .loop{fill:none;stroke:#2b8a63;stroke-width:2;stroke-linecap:round;stroke-dasharray:8 8;marker-end:url(#arrow-green-zh)}
-    .loop-label{fill:#2b7659;font-size:13px;font-weight:500}
+    #zloop-simple-zh{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","SF Pro Text","Segoe UI","Microsoft YaHei UI","Microsoft YaHei",Arial,sans-serif}
+    .page{fill:#f7f7f5}.decor{fill:url(#simple-glow-zh)}
+    .title{fill:#151619;font-size:42px;font-weight:500;letter-spacing:-1.3px}
+    .subtitle{fill:#666a73;font-size:17px;font-weight:400}
+    .eyebrow{fill:#989da6;font-size:12px;font-weight:500;letter-spacing:1.8px}
+    .stage{fill:#989da6;font-size:13px;font-weight:500;letter-spacing:1.4px}
+    .node-title{fill:#151619;font-size:18px;font-weight:500;letter-spacing:-.25px}
+    .node-sub{fill:#5d626b;font-size:12.5px;font-weight:400}
+    .section-note{fill:#5d626b;font-size:14px;font-weight:500}
+    .foot{fill:#8e959f;font-size:11px;font-weight:400}
+    .box{fill:#fff;stroke:#d9dce1;stroke-width:1.1;filter:url(#simple-shadow-zh)}
+    .blue-card{fill:url(#simple-blue-zh);stroke:#b9d6ff;stroke-width:1.2;filter:url(#simple-shadow-zh)}
+    .green-card{fill:#fff;stroke:#c3e9d2;stroke-width:1.2;filter:url(#simple-shadow-zh)}
+    .amber-card{fill:#fff;stroke:#edd49a;stroke-width:1.2;filter:url(#simple-shadow-zh)}
+    .violet-card{fill:url(#simple-violet-zh);stroke:#d6c8fa;stroke-width:1.2;filter:url(#simple-shadow-zh)}
+    .connector{fill:none;stroke:#8f98a5;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round;marker-end:url(#simple-arrow-zh)}
+    .hairline{stroke:#d9dce1;stroke-width:1}
   </style>
 
-  <rect class="page" width="1600" height="1180"/>
-  <circle class="decor" cx="1485" cy="30" r="250" opacity=".8"/>
-  <circle class="decor" cx="80" cy="1120" r="190" opacity=".55"/>
+  <rect class="page" width="1600" height="1220"/>
+  <circle class="decor" cx="1502" cy="22" r="252" opacity=".65"/>
+  <circle class="decor" cx="110" cy="1160" r="210" opacity=".45"/>
 
-  <text class="eyebrow" x="80" y="56">ZLOOP ORCHESTRA  /  PRODUCT IN ONE VIEW</text>
-  <text class="title" x="80" y="110">让 ZCode 的 Agent 工作，从“启动”走到“可发布”</text>
-  <text class="subtitle" x="80" y="143">ZLoop 负责记录、隔离、验收和恢复；ZCode 继续负责思考，人类保留最终发布权。</text>
+  <text class="eyebrow" x="72" y="54">SYSTEM ARCHITECTURE  /  SIMPLIFIED VIEW</text>
+  <text class="title" x="72" y="96">ZCode LOOP Orchestra</text>
+  <text class="subtitle" x="72" y="127">让长时间的 AI 编程任务拥有持久记忆、并行 Agent、可靠检查和中断恢复。</text>
 
-  <g>
-    <rect class="card" x="80" y="178" width="440" height="82" rx="22"/>
-    <rect x="80" y="178" width="6" height="82" rx="3" fill="#4c76b9"/>
-    <text class="hero-label" x="110" y="207">ZCODE</text>
-    <text class="hero-title" x="110" y="235">负责理解目标与形成计划</text>
-  </g>
-  <g>
-    <rect class="card-green" x="580" y="178" width="440" height="82" rx="22"/>
-    <rect x="580" y="178" width="6" height="82" rx="3" fill="#2b8a63"/>
-    <text class="hero-label" x="610" y="207">ZLOOP</text>
-    <text class="hero-title" x="610" y="235">负责让任务持续推进并可核验</text>
-  </g>
-  <g>
-    <rect class="card-amber" x="1080" y="178" width="440" height="82" rx="22"/>
-    <rect x="1080" y="178" width="6" height="82" rx="3" fill="#b37a2c"/>
-    <text class="hero-label" x="1110" y="207">HUMAN</text>
-    <text class="hero-title" x="1110" y="235">负责决定什么可以发布</text>
-  </g>
+  <line class="hairline" x1="165" y1="198" x2="165" y2="1116"/>
+  <circle cx="165" cy="212" r="4" fill="#8f98a5"/>
+  <text class="stage" x="78" y="218">目标</text>
+  <text class="stage" x="78" y="405">计划</text>
+  <text class="stage" x="78" y="624">工作</text>
+  <text class="stage" x="78" y="847">检查</text>
+  <text class="stage" x="78" y="1056">合并</text>
 
-  <line class="hairline" x1="182" y1="306" x2="182" y2="1057"/>
-  <circle cx="182" cy="320" r="4" fill="#9aa6a0"/>
-  <text class="rail" x="80" y="326">目标</text>
-  <text class="rail" x="80" y="444">规划</text>
-  <text class="rail" x="80" y="558">执行</text>
-  <text class="rail" x="80" y="672">验收</text>
-  <text class="rail" x="80" y="786">发布</text>
-  <text class="rail" x="80" y="906">结果</text>
+  <rect class="box" x="250" y="168" rx="24" width="575" height="92"/>
+  <text class="node-title" x="278" y="210">用户目标</text>
+  <text class="node-sub" x="278" y="238">工程目标、项目目录、约束和完成标准</text>
 
-  <path class="flow" d="M800 392V408"/>
-  <path class="flow" d="M800 506V522"/>
-  <path class="flow" d="M800 620V636"/>
-  <path class="flow" d="M800 734V750"/>
-  <path class="flow" d="M800 848V864"/>
+  <rect class="blue-card" x="858" y="168" rx="24" width="492" height="92"/>
+  <text class="node-title" x="886" y="210">主 ZCode Agent</text>
+  <text class="node-sub" x="886" y="238">理解问题、制定计划并处理真正的不确定问题</text>
 
-  <g>
-    <rect class="card" x="260" y="306" width="1080" height="86" rx="24"/>
-    <circle class="number-blue" cx="304" cy="349" r="19"/>
-    <text class="number" x="304" y="354" text-anchor="middle">01</text>
-    <text class="step-title" x="350" y="344">用户给出目标</text>
-    <text class="step-body" x="350" y="370">一项工程目标进入 Run 和 Stage，同时记录基线与风险边界。</text>
-    <text class="step-note" x="1240" y="354" text-anchor="end">先把问题放进可追踪的运行中</text>
-  </g>
+  <path class="connector" d="M800 286V320"/>
+  <text class="section-note" x="800" y="306" text-anchor="middle">↓ 一次规划，把目标变成可以独立执行的任务</text>
 
-  <g>
-    <rect class="card-blue" x="260" y="420" width="1080" height="86" rx="24"/>
-    <circle class="number-blue" cx="304" cy="463" r="19"/>
-    <text class="number" x="304" y="468" text-anchor="middle">02</text>
-    <text class="step-title" x="350" y="458">根对话只做规划</text>
-    <text class="step-body" x="350" y="484">把工作拆成有边界的任务包；根对话不亲自承担批量执行。</text>
-    <text class="step-note" x="1240" y="468" text-anchor="end">决定“做什么”，不替 worker 做完所有事</text>
-  </g>
+  <rect class="amber-card" x="250" y="355" rx="24" width="350" height="118"/>
+  <text class="node-title" x="278" y="405">任务依赖图</text>
+  <text class="node-sub" x="278" y="434">任务目标、前置关系和允许修改的文件</text>
 
-  <g>
-    <rect class="card-green" x="260" y="534" width="1080" height="86" rx="24"/>
-    <circle class="number-green" cx="304" cy="577" r="19"/>
-    <text class="number" x="304" y="582" text-anchor="middle">03</text>
-    <text class="step-title" x="350" y="572">控制回路持续推进</text>
-    <text class="step-body" x="350" y="598">监督器按依赖启动隔离的 worker；一个任务结束，就处理下一个可执行任务。</text>
-    <text class="step-note" x="1240" y="582" text-anchor="end">等待、计数和状态迁移由程序处理</text>
-  </g>
+  <rect class="amber-card" x="625" y="355" rx="24" width="350" height="118"/>
+  <text class="node-title" x="653" y="405">自动调度任务</text>
+  <text class="node-sub" x="653" y="434">任务准备好就启动；常规重试由程序处理</text>
 
-  <g>
-    <rect class="card-amber" x="260" y="648" width="1080" height="86" rx="24"/>
-    <circle class="number-amber" cx="304" cy="691" r="19"/>
-    <text class="number" x="304" y="696" text-anchor="middle">04</text>
-    <text class="step-title" x="350" y="686">结果回到暂存区验收</text>
-    <text class="step-body" x="350" y="712">检查实际差异、路径与验收命令；失败就恢复已知状态并保留证据。</text>
-    <text class="step-note" x="1240" y="696" text-anchor="end">worker 说“完成”不等于候选合格</text>
-  </g>
+  <rect class="amber-card" x="1000" y="355" rx="24" width="350" height="118"/>
+  <text class="node-title" x="1028" y="405">持久记忆</text>
+  <text class="node-sub" x="1028" y="434">事件、检查点和证据保存在对话之外</text>
 
-  <g>
-    <rect class="card-warm" x="260" y="762" width="1080" height="86" rx="24"/>
-    <circle class="number-ink" cx="304" cy="805" r="19"/>
-    <text class="number" x="304" y="810" text-anchor="middle">05</text>
-    <text class="step-title" x="350" y="800">审查后由人发布</text>
-    <text class="step-body" x="350" y="826">审查可以阻断、要求重做或升级；最终 merge / promotion 仍由人触发。</text>
-    <text class="step-note" x="1240" y="810" text-anchor="end">控制回路停在发布边界之前</text>
-  </g>
+  <path class="connector" d="M800 500V536"/>
+  <text class="section-note" x="800" y="522" text-anchor="middle">↓ 每个 Agent 使用独立工作区；迟到结果不能覆盖新计划</text>
 
-  <path class="loop" d="M1240 886C1240 942 360 942 360 886"/>
-  <rect x="525" y="917" width="550" height="38" rx="19" fill="#f0f8f3" stroke="#c7e2d2"/>
-  <text class="loop-label" x="800" y="941" text-anchor="middle">还有待执行任务？回到第 3 步继续推进；失败则保留证据并恢复</text>
+  <rect class="green-card" x="250" y="573" rx="24" width="538" height="110"/>
+  <text class="node-title" x="278" y="623">隔离的执行 Agent</text>
+  <text class="node-sub" x="278" y="652">并行完成边界明确的工程任务，不直接修改主分支</text>
 
-  <text class="eyebrow" x="80" y="1002">THE RESULT  /  你真正得到的改变</text>
-  <line class="hairline" x1="80" y1="1018" x2="1520" y2="1018"/>
-  <g>
-    <rect class="card" x="80" y="1040" width="440" height="86" rx="22"/>
-    <rect x="80" y="1040" width="6" height="86" rx="3" fill="#2b8a63"/>
-    <text class="outcome-title" x="110" y="1073">可追踪</text>
-    <text class="outcome-body" x="110" y="1101">Run、Stage、Packet 和证据都留下记录。</text>
-  </g>
-  <g>
-    <rect class="card" x="580" y="1040" width="440" height="86" rx="22"/>
-    <rect x="580" y="1040" width="6" height="86" rx="3" fill="#b37a2c"/>
-    <text class="outcome-title" x="610" y="1073">可恢复</text>
-    <text class="outcome-body" x="610" y="1101">失败、中断和旧结果不会悄悄污染下一步。</text>
-  </g>
-  <g>
-    <rect class="card" x="1080" y="1040" width="440" height="86" rx="22"/>
-    <rect x="1080" y="1040" width="6" height="86" rx="3" fill="#4c76b9"/>
-    <text class="outcome-title" x="1110" y="1073">可控发布</text>
-    <text class="outcome-body" x="1110" y="1101">系统能阻断或升级，但不能替人发布。</text>
-  </g>
+  <rect class="green-card" x="812" y="573" rx="24" width="538" height="110"/>
+  <text class="node-title" x="840" y="623">保留来源的研究 Agent</text>
+  <text class="node-sub" x="840" y="652">单独查找外部资料，并记录来源和时间</text>
 
-  <line class="hairline" x1="80" y1="1150" x2="1520" y2="1150"/>
-  <text class="foot" x="80" y="1168">一句话：ZCode 负责思考，ZLoop 负责把运行管起来，人类负责决定什么真正进入规范分支。</text>
-  <text class="foot" x="1520" y="1168" text-anchor="end">简化产品流程</text>
+  <path class="connector" d="M800 708V744"/>
+  <text class="section-note" x="800" y="730" text-anchor="middle">↓ 检查真实改动，而不是相信一句“我完成了”</text>
+
+  <rect class="violet-card" x="250" y="781" rx="24" width="350" height="126"/>
+  <text class="node-title" x="278" y="831">重新检查真实结果</text>
+  <text class="node-sub" x="278" y="860">实际改动、允许范围、测试和运行结果</text>
+
+  <rect class="violet-card" x="625" y="781" rx="24" width="350" height="126"/>
+  <text class="node-title" x="653" y="831">独立模型审查</text>
+  <text class="node-sub" x="653" y="860">可要求重做或上报风险，但不能发布</text>
+
+  <rect class="violet-card" x="1000" y="781" rx="24" width="350" height="126"/>
+  <text class="node-title" x="1028" y="831">失败恢复</text>
+  <text class="node-sub" x="1028" y="860">坏候选恢复到已知状态，证据继续保留</text>
+
+  <path class="connector" d="M800 934V969"/>
+
+  <rect class="blue-card" x="250" y="992" rx="26" width="1100" height="126"/>
+  <text class="node-title" x="280" y="1042">人工确认后最终合并</text>
+  <text class="node-sub" x="280" y="1071">所有检查通过后，仍由人决定候选结果是否进入主分支；任何 Agent 都没有发布权限。</text>
+
+  <line class="hairline" x1="72" y1="1158" x2="1528" y2="1158"/>
+  <text class="foot" x="72" y="1186">主 Agent 负责决策，ZLoop 保存状态并调度任务，多个 Agent 分开工作，真实检查与独立模型负责审查，最终由人合并。</text>
 </svg>

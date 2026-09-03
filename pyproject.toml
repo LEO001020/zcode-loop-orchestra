@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "zloop"
 version = "0.1.0"
-description = "A local control layer for bounded, verifiable, human-released ZCode agent runs"
+description = "A restartable multi-agent engineering workflow for ZCode"
 requires-python = ">=3.11"
 dependencies = []
 

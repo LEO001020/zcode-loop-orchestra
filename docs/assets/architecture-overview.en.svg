@@ -1,257 +1,201 @@
-<svg id="zloop-overview-en" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1480" role="img" aria-labelledby="title desc">
-  <title id="title">ZCode LOOP Orchestra architecture</title>
-  <desc id="desc">ZCode owns reasoning and planning. ZLoop adds runs, stages, bounded packets, supervised waves, isolated workspaces, mechanical acceptance, review records, recovery, and human-triggered promotion.</desc>
+<svg id="zloop-overview-en" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1320" role="img" aria-labelledby="title desc">
+  <title id="title">ZCode LOOP Orchestra full architecture</title>
+  <desc id="desc">From user objective to human merge: the main ZCode agent makes judgments, ZLoop stores state and schedules work, worker agents run in separate workspaces, real evidence and an independent model review the result, and a person releases it.</desc>
   <defs>
-    <filter id="shadow-soft-en-full" x="-12%" y="-18%" width="124%" height="146%">
-      <feDropShadow dx="0" dy="7" stdDeviation="12" flood-color="#728079" flood-opacity=".075"/>
+    <linearGradient id="overview-glow-en" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#ffffff"/>
+      <stop offset="1" stop-color="#eef1f5"/>
+    </linearGradient>
+    <linearGradient id="overview-blue-en" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#ffffff"/>
+      <stop offset="1" stop-color="#eef5ff"/>
+    </linearGradient>
+    <linearGradient id="overview-violet-en" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#ffffff"/>
+      <stop offset="1" stop-color="#f4f0ff"/>
+    </linearGradient>
+    <filter id="overview-shadow-en" x="-18%" y="-24%" width="136%" height="166%">
+      <feDropShadow dx="0" dy="9" stdDeviation="15" flood-color="#7a8492" flood-opacity=".11"/>
     </filter>
-    <marker id="arrow-en-full" markerWidth="12" markerHeight="12" refX="9" refY="6" orient="auto" markerUnits="strokeWidth">
-      <path d="M0 0L12 6L0 12Z" fill="#98a49e"/>
+    <marker id="overview-arrow-en" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto" markerUnits="strokeWidth">
+      <path d="M0 0L10 5L0 10Z" fill="#8f98a5"/>
     </marker>
-    <marker id="arrow-green-en-full" markerWidth="12" markerHeight="12" refX="9" refY="6" orient="auto" markerUnits="strokeWidth">
-      <path d="M0 0L12 6L0 12Z" fill="#2b8a63"/>
+    <marker id="overview-green-arrow-en" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto" markerUnits="strokeWidth">
+      <path d="M0 0L10 5L0 10Z" fill="#168a50"/>
     </marker>
-    <marker id="arrow-red-en-full" markerWidth="12" markerHeight="12" refX="9" refY="6" orient="auto" markerUnits="strokeWidth">
-      <path d="M0 0L12 6L0 12Z" fill="#c45d53"/>
+    <marker id="overview-red-arrow-en" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto" markerUnits="strokeWidth">
+      <path d="M0 0L10 5L0 10Z" fill="#c5413a"/>
     </marker>
   </defs>
   <style>
-    #zloop-overview-en{font-family:Inter,"SF Pro Display",-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif}
-    .page{fill:#f7f8f6}.decor{fill:#edf2ee}
-    .eyebrow{fill:#8d9892;font-size:12px;font-weight:500;letter-spacing:2px}
-    .title{fill:#17201d;font-size:48px;font-weight:500;letter-spacing:-1.8px}
-    .subtitle{fill:#5d6a65;font-size:18px;font-weight:400}
-    .hero-title{fill:#17201d;font-size:18px;font-weight:500}
-    .hero-body{fill:#5d6a65;font-size:14px;font-weight:400}
-    .section{fill:#8d9892;font-size:11px;font-weight:500;letter-spacing:1.8px}
-    .rail{fill:#8d9892;font-size:11px;font-weight:500;letter-spacing:1.3px}
-    .node-title{fill:#17201d;font-size:19px;font-weight:500;letter-spacing:-.35px}
-    .node-body{fill:#5d6a65;font-size:13.5px;font-weight:400}
-    .node-note{fill:#8d9892;font-size:12px;font-weight:400}
-    .service-title{fill:#17201d;font-size:17px;font-weight:500}
-    .service-body{fill:#5d6a65;font-size:13px;font-weight:400}
-    .chip{fill:#65716c;font-size:11px;font-weight:400}
-    .number{fill:#fff;font-size:12px;font-weight:500}
-    .release-title{fill:#173d2e;font-size:19px;font-weight:500}
-    .release-body{fill:#4b6c5e;font-size:14px;font-weight:400}
-    .foot{fill:#8d9892;font-size:11px;font-weight:400}
-    .card{fill:#fff;stroke:#dbe2de;stroke-width:1.2;filter:url(#shadow-soft-en-full)}
-    .blue{fill:#f2f6fc;stroke:#c9d8ec;stroke-width:1.2;filter:url(#shadow-soft-en-full)}
-    .green{fill:#f1f8f4;stroke:#bfdfcc;stroke-width:1.2;filter:url(#shadow-soft-en-full)}
-    .amber{fill:#fff7e8;stroke:#ecd39e;stroke-width:1.2;filter:url(#shadow-soft-en-full)}
-    .red{fill:#fff4f1;stroke:#efc7c1;stroke-width:1.2;filter:url(#shadow-soft-en-full)}
-    .ink{fill:#fbfcfa;stroke:#d5e2da;stroke-width:1.2;filter:url(#shadow-soft-en-full)}
-    .hairline{stroke:#dce3df;stroke-width:1}
-    .flow{fill:none;stroke:#98a49e;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;marker-end:url(#arrow-en-full)}
-    .flow-soft{fill:none;stroke:#cad3ce;stroke-width:1.2;stroke-linecap:round;stroke-dasharray:5 7}
-    .flow-green{fill:none;stroke:#2b8a63;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;marker-end:url(#arrow-green-en-full)}
-    .flow-red{fill:none;stroke:#c45d53;stroke-width:1.8;stroke-linecap:round;stroke-dasharray:6 7;marker-end:url(#arrow-red-en-full)}
+    #zloop-overview-en{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","SF Pro Text",Inter,"Segoe UI",Arial,sans-serif}
+    .page{fill:#f7f7f5}.decor{fill:url(#overview-glow-en)}
+    .title{fill:#151619;font-size:42px;font-weight:500;letter-spacing:-1.4px}
+    .subtitle{fill:#666a73;font-size:17px;font-weight:400}
+    .eyebrow{fill:#989da6;font-size:12px;font-weight:500;letter-spacing:1.8px}
+    .promise-title{fill:#151619;font-size:17px;font-weight:500}
+    .promise-sub{fill:#7d848e;font-size:11.5px;font-weight:400}
+    .stage{fill:#989da6;font-size:11px;font-weight:500;letter-spacing:1.7px}
+    .node-title{fill:#151619;font-size:18px;font-weight:500;letter-spacing:-.25px}
+    .node-sub{fill:#60656e;font-size:12px;font-weight:400}
+    .node-note{fill:#8d949e;font-size:10.8px;font-weight:400}
+    .chip-text{font-size:10px;font-weight:500;letter-spacing:.3px}
+    .small{fill:#60656e;font-size:10.5px;font-weight:400}
+    .foot{fill:#8d949e;font-size:10.5px;font-weight:400}
+    .box{fill:#fff;stroke:#d9dce1;stroke-width:1.1;filter:url(#overview-shadow-en)}
+    .blue-card{fill:url(#overview-blue-en);stroke:#b9d6ff;stroke-width:1.2;filter:url(#overview-shadow-en)}
+    .green-card{fill:#fff;stroke:#c3e9d2;stroke-width:1.2;filter:url(#overview-shadow-en)}
+    .amber-card{fill:#fff;stroke:#edd49a;stroke-width:1.2;filter:url(#overview-shadow-en)}
+    .violet-card{fill:url(#overview-violet-en);stroke:#d6c8fa;stroke-width:1.2;filter:url(#overview-shadow-en)}
+    .red-card{fill:#fff;stroke:#f0beb9;stroke-width:1.2;filter:url(#overview-shadow-en)}
+    .connector{fill:none;stroke:#8f98a5;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round;marker-end:url(#overview-arrow-en)}
+    .connector-soft{fill:none;stroke:#d9dce1;stroke-width:1.3;stroke-linecap:round;stroke-linejoin:round}
+    .connector-green{fill:none;stroke:#168a50;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round;marker-end:url(#overview-green-arrow-en)}
+    .connector-red{fill:none;stroke:#c5413a;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round;marker-end:url(#overview-red-arrow-en);stroke-dasharray:6 7}
+    .hairline{stroke:#d9dce1;stroke-width:1}
+    .blue-text{fill:#1267e5}.green-text{fill:#168a50}.violet-text{fill:#7651c9}.red-text{fill:#c5413a}
   </style>
 
-  <rect class="page" width="1600" height="1480"/>
-  <circle class="decor" cx="1490" cy="20" r="250" opacity=".82"/>
-  <circle class="decor" cx="75" cy="1420" r="205" opacity=".55"/>
+  <rect class="page" width="1600" height="1320"/>
+  <circle class="decor" cx="1492" cy="8" r="260" opacity=".65"/>
+  <circle class="decor" cx="94" cy="1260" r="220" opacity=".5"/>
 
-  <text class="eyebrow" x="80" y="56">ZLOOP ORCHESTRA  /  ARCHITECTURE</text>
-  <text class="title" x="80" y="110">ZCode thinks. ZLoop governs the run.</text>
-  <text class="subtitle" x="80" y="143">Models judge. Code owns state. Mechanical reality accepts results. A person releases them.</text>
+  <text class="eyebrow" x="72" y="54">SYSTEM ARCHITECTURE  /  CONTROL AND RECOVERY</text>
+  <text class="title" x="72" y="96">ZCode LOOP Orchestra</text>
+  <text class="subtitle" x="72" y="127">A restartable multi-agent workflow for long ZCode jobs—from one goal to a human-approved merge.</text>
 
-  <g>
-    <rect class="card" x="80" y="178" width="345" height="78" rx="21"/>
-    <rect x="80" y="178" width="6" height="78" rx="3" fill="#4c76b9"/>
-    <text class="hero-title" x="108" y="210">ZCode root</text>
-    <text class="hero-body" x="108" y="235">Cognitive authority: goals and plans</text>
-  </g>
-  <g>
-    <rect class="card" x="445" y="178" width="345" height="78" rx="21"/>
-    <rect x="445" y="178" width="6" height="78" rx="3" fill="#2b8a63"/>
-    <text class="hero-title" x="473" y="210">Wave supervisor</text>
-    <text class="hero-body" x="473" y="235">Execution authority: state and workers</text>
-  </g>
-  <g>
-    <rect class="card" x="810" y="178" width="345" height="78" rx="21"/>
-    <rect x="810" y="178" width="6" height="78" rx="3" fill="#b37a2c"/>
-    <text class="hero-title" x="838" y="210">Mechanical reality</text>
-    <text class="hero-body" x="838" y="235">Correctness authority: tests and runtime</text>
-  </g>
-  <g>
-    <rect class="card" x="1175" y="178" width="345" height="78" rx="21"/>
-    <rect x="1175" y="178" width="6" height="78" rx="3" fill="#53615b"/>
-    <text class="hero-title" x="1203" y="210">Human maintainer</text>
-    <text class="hero-body" x="1203" y="235">Release authority: final promotion</text>
-  </g>
+  <rect class="box" x="72" y="160" rx="20" width="330" height="84"/>
+  <rect x="72" y="160" width="4" height="84" rx="2" fill="#1267e5"/>
+  <text class="promise-title" x="96" y="195">Persistent memory</text>
+  <text class="promise-sub" x="96" y="220">Recover after context compression, restart, or interruption</text>
 
-  <text class="section" x="80" y="302">THE CONTROL LOOP  /  ONE TASK, END TO END</text>
-  <text class="section" x="1120" y="302">SUPPORT  /  EVIDENCE FOR THE FLOW</text>
-  <line class="hairline" x1="80" y1="318" x2="1520" y2="318"/>
+  <rect class="box" x="418" y="160" rx="20" width="330" height="84"/>
+  <rect x="418" y="160" width="4" height="84" rx="2" fill="#168a50"/>
+  <text class="promise-title" x="442" y="195">Isolated parallelism</text>
+  <text class="promise-sub" x="442" y="220">Many agents work at once without sharing a writable checkout</text>
 
-  <line class="hairline" x1="188" y1="344" x2="188" y2="1308"/>
-  <circle cx="188" cy="356" r="4" fill="#98a49e"/>
-  <text class="rail" x="80" y="362">INTENT</text>
-  <text class="rail" x="80" y="486">BOUNDARY</text>
-  <text class="rail" x="80" y="632">CONTROL</text>
-  <text class="rail" x="80" y="786">EXECUTE</text>
-  <text class="rail" x="80" y="954">VERIFY</text>
-  <text class="rail" x="80" y="1122">REVIEW</text>
-  <text class="rail" x="80" y="1262">PROMOTE</text>
+  <rect class="box" x="764" y="160" rx="20" width="330" height="84"/>
+  <rect x="764" y="160" width="4" height="84" rx="2" fill="#a86d00"/>
+  <text class="promise-title" x="788" y="195">Real verification</text>
+  <text class="promise-sub" x="788" y="220">Inspect actual changes, file scope, tests, and runtime</text>
 
-  <path class="flow" d="M645 436V452"/>
-  <path class="flow" d="M645 574V590"/>
-  <path class="flow" d="M645 706V722"/>
-  <path class="flow" d="M645 858V874"/>
-  <path class="flow" d="M645 1034V1050"/>
-  <path class="flow-green" d="M645 1188V1204"/>
+  <rect class="box" x="1110" y="160" rx="20" width="418" height="84"/>
+  <rect x="1110" y="160" width="4" height="84" rx="2" fill="#151619"/>
+  <text class="promise-title" x="1134" y="195">Human release</text>
+  <text class="promise-sub" x="1134" y="220">No worker or reviewer can merge by itself</text>
 
-  <g>
-    <rect class="blue" x="240" y="344" width="810" height="92" rx="24"/>
-    <circle cx="280" cy="390" r="18" fill="#4c76b9"/>
-    <text class="number" x="280" y="394" text-anchor="middle">01</text>
-    <text class="node-title" x="322" y="383">The objective enters a Run and Stage</text>
-    <text class="node-body" x="322" y="411">The root interprets the goal; LOOP records the baseline, risk floor, and revision.</text>
-    <text class="node-note" x="1008" y="394" text-anchor="end">Canonical stays outside worker life</text>
-  </g>
+  <line class="hairline" x1="160" y1="286" x2="160" y2="1254"/>
+  <circle cx="160" cy="299" r="4" fill="#8f98a5"/>
+  <text class="stage" x="72" y="304">GOAL</text>
+  <text class="stage" x="72" y="400">DECIDE</text>
+  <text class="stage" x="72" y="502">PLAN</text>
+  <text class="stage" x="72" y="611">CONTROL</text>
+  <text class="stage" x="72" y="728">EXECUTE</text>
+  <text class="stage" x="72" y="840">EVIDENCE</text>
+  <text class="stage" x="72" y="948">REVIEW</text>
+  <text class="stage" x="72" y="1041">INTEGRATE</text>
+  <text class="stage" x="72" y="1124">RELEASE</text>
+  <text class="stage" x="72" y="1226">RECOVER</text>
 
-  <g>
-    <rect class="amber" x="240" y="452" width="810" height="122" rx="24"/>
-    <circle cx="280" cy="494" r="18" fill="#b37a2c"/>
-    <text class="number" x="280" y="498" text-anchor="middle">02</text>
-    <text class="node-title" x="322" y="487">The plan becomes bounded work packets</text>
-    <text class="node-body" x="322" y="516">Each packet names its goal, path scope, checks, constraints, and dependencies.</text>
-    <text class="node-body" x="322" y="543">The DAG gate rejects cycles and overlapping writes before dispatch.</text>
-    <rect x="790" y="521" width="218" height="28" rx="14" fill="#fffdf8" stroke="#e8cf9a"/>
-    <text class="chip" x="899" y="539" text-anchor="middle">proposal → host validation</text>
-  </g>
+  <path class="connector" d="M800 338V356"/>
+  <path class="connector" d="M800 431V454"/>
+  <path class="connector" d="M800 555V575"/>
+  <path class="connector" d="M800 681V702"/>
+  <path class="connector" d="M800 786V810"/>
+  <path class="connector" d="M800 890V914"/>
 
-  <g>
-    <rect class="green" x="240" y="590" width="810" height="116" rx="24"/>
-    <circle cx="280" cy="632" r="18" fill="#2b8a63"/>
-    <text class="number" x="280" y="636" text-anchor="middle">03</text>
-    <text class="node-title" x="322" y="625">The supervisor advances the whole wave</text>
-    <text class="node-body" x="322" y="654">It records launch intent, starts ready packets, and collects results without blocking on one worker.</text>
-    <text class="node-body" x="322" y="681">Code owns waiting, counting, cancellation, and terminal states—not extra model turns.</text>
-  </g>
+  <rect class="box" x="220" y="268" rx="22" width="1160" height="70"/>
+  <text class="node-title" x="800" y="296" text-anchor="middle">Human engineering goal</text>
+  <text class="node-sub" x="800" y="319" text-anchor="middle">One objective enters the system; final merge and release remain human-triggered.</text>
 
-  <g>
-    <rect class="card" x="240" y="722" width="390" height="136" rx="24"/>
-    <rect x="240" y="722" width="6" height="136" rx="3" fill="#2b8a63"/>
-    <text class="node-title" x="272" y="760">Isolated launch workspaces</text>
-    <text class="node-body" x="272" y="791">Every launch gets a new launch_id</text>
-    <text class="node-body" x="272" y="816">and a separate working directory.</text>
-    <text class="node-note" x="272" y="841">No direct writes to control state or canonical refs</text>
-  </g>
-  <g>
-    <rect class="card" x="660" y="722" width="390" height="136" rx="24"/>
-    <rect x="660" y="722" width="6" height="136" rx="3" fill="#4c76b9"/>
-    <text class="node-title" x="692" y="760">Concurrent Codex SDK turns</text>
-    <text class="node-body" x="692" y="791">One supervisor and one client run</text>
-    <text class="node-body" x="692" y="816">multiple turns in independent workspaces.</text>
-    <text class="node-note" x="692" y="841">Worker config disables nested agents; identity fences accept results</text>
-  </g>
+  <rect class="blue-card" x="220" y="356" rx="24" width="1160" height="75"/>
+  <rect x="242" y="371" rx="10" width="122" height="23" fill="#eaf3ff" stroke="#b9d6ff"/>
+  <text class="chip-text blue-text" x="303" y="386.5" text-anchor="middle">MAIN AGENT</text>
+  <text class="node-title" x="800" y="384" text-anchor="middle">Main ZCode agent</text>
+  <text class="node-sub" x="800" y="409" text-anchor="middle">Understands the goal, plans, synthesizes evidence, and resolves uncertainty that truly needs judgment</text>
 
-  <g>
-    <rect class="amber" x="240" y="874" width="810" height="160" rx="24"/>
-    <circle cx="280" cy="916" r="18" fill="#b37a2c"/>
-    <text class="number" x="280" y="920" text-anchor="middle">04</text>
-    <text class="node-title" x="322" y="909">Materialize: recheck the delta in staging</text>
-    <text class="node-body" x="322" y="938">Apply the delta to private staging, verify its paths, then rerun host acceptance.</text>
-    <text class="node-body" x="322" y="965">Pass: create a traceable candidate. Fail: restore the previous SHA and block the packet.</text>
-    <rect x="322" y="986" width="242" height="28" rx="14" fill="#fffdf8" stroke="#e8cf9a"/>
-    <text class="chip" x="443" y="1004" text-anchor="middle">mechanical result beats model report</text>
-  </g>
+  <rect class="box" x="220" y="454" rx="21" width="558" height="101"/>
+  <text class="eyebrow" x="244" y="480">DECISION</text>
+  <text class="node-title" x="244" y="510">Clear work plan</text>
+  <text class="node-sub" x="244" y="535">Goal, allowed files, acceptance checks, and risk boundary</text>
 
-  <path class="flow-red" d="M1050 958H1080V1014H948"/>
-  <text class="node-note" x="1070" y="947" text-anchor="end" fill="#b34f48">FAIL</text>
-  <g>
-    <rect class="red" x="680" y="1050" width="370" height="138" rx="24"/>
-    <text class="node-title" x="710" y="1086">Failure restores known state</text>
-    <text class="node-body" x="710" y="1115">Staging returns to known state. The failed delta,</text>
-    <text class="node-body" x="710" y="1140">logs, and identity remain inspectable.</text>
-    <text class="node-note" x="710" y="1166">A bad candidate cannot silently advance</text>
-  </g>
-  <g>
-    <rect class="blue" x="240" y="1050" width="410" height="138" rx="24"/>
-    <circle cx="280" cy="1092" r="18" fill="#4c76b9"/>
-    <text class="number" x="280" y="1096" text-anchor="middle">05</text>
-    <text class="node-title" x="322" y="1085">Review becomes evidence</text>
-    <text class="node-body" x="322" y="1115">C2C-P critiques plans; C2C-A critiques results.</text>
-    <text class="node-body" x="322" y="1140">Responses are bounded, redacted, and external_untrusted.</text>
-    <text class="node-note" x="322" y="1166">Review may block or escalate; it cannot publish</text>
-  </g>
+  <rect class="box" x="822" y="454" rx="21" width="558" height="101"/>
+  <text class="eyebrow" x="846" y="480">TASK GRAPH</text>
+  <text class="node-title" x="846" y="510">Dependencies and parallel work</text>
+  <text class="node-sub" x="846" y="535">Independent tasks run together; dependent work waits for prerequisites</text>
+  <path class="connector-soft" d="M778 504H822"/>
 
-  <g>
-    <rect class="green" x="240" y="1204" width="810" height="112" rx="24"/>
-    <circle cx="280" cy="1246" r="18" fill="#2b8a63"/>
-    <text class="number" x="280" y="1250" text-anchor="middle">06</text>
-    <text class="release-title" x="322" y="1240">CAS + git merge --ff-only → human promotion</text>
-    <text class="release-body" x="322" y="1270">Only a person runs stage promote after the candidate, Git state, and release gates agree.</text>
-  </g>
+  <rect class="amber-card" x="220" y="575" rx="24" width="1160" height="106"/>
+  <text class="node-title" x="800" y="603" text-anchor="middle">Automatic scheduling and state</text>
+  <text class="node-sub" x="800" y="626" text-anchor="middle">Code keeps work moving and records what happened. Models handle decisions that need judgment.</text>
+  <rect x="247" y="643" width="255" height="23" rx="11.5" fill="#fff6de" stroke="#edd49a"/>
+  <text class="small" x="374.5" y="658" text-anchor="middle">save current state</text>
+  <rect x="520" y="643" width="255" height="23" rx="11.5" fill="#fff6de" stroke="#edd49a"/>
+  <text class="small" x="647.5" y="658" text-anchor="middle">start dependency-ready work</text>
+  <rect x="793" y="643" width="255" height="23" rx="11.5" fill="#fff6de" stroke="#edd49a"/>
+  <text class="small" x="920.5" y="658" text-anchor="middle">ordinary retry and cancellation</text>
+  <rect x="1066" y="643" width="287" height="23" rx="11.5" fill="#fff6de" stroke="#edd49a"/>
+  <text class="small" x="1209.5" y="658" text-anchor="middle">reject late or outdated results</text>
 
-  <path class="flow-soft" d="M1050 390H1100"/>
-  <path class="flow-soft" d="M1050 638H1100"/>
-  <path class="flow-soft" d="M1050 948H1100"/>
-  <path class="flow-soft" d="M1050 1110H1100"/>
-  <path class="flow-soft" d="M1050 1260H1100"/>
+  <rect class="green-card" x="220" y="702" rx="24" width="558" height="84"/>
+  <rect x="242" y="717" rx="10" width="126" height="23" fill="#ebf8f0" stroke="#c3e9d2"/>
+  <text class="chip-text green-text" x="305" y="732.5" text-anchor="middle">WORKER AGENTS</text>
+  <text class="node-title" x="499" y="742" text-anchor="middle">Parallel coding agents</text>
+  <text class="node-sub" x="499" y="765" text-anchor="middle">One workspace per task; no direct writes to the main branch</text>
 
-  <g>
-    <rect class="card" x="1100" y="344" width="420" height="204" rx="24"/>
-    <rect x="1100" y="344" width="6" height="204" rx="3" fill="#4c76b9"/>
-    <text class="service-title" x="1132" y="380">Durable control state S</text>
-    <text class="service-body" x="1132" y="410">SQLite stores Runs, Stages, Packets, Attempts,</text>
-    <text class="service-body" x="1132" y="435">Launches, revisions, and lifecycle events.</text>
-    <line class="hairline" x1="1132" y1="460" x2="1488" y2="460"/>
-    <text class="service-body" x="1132" y="490">It is the state authority; the model does not need</text>
-    <text class="service-body" x="1132" y="515">to remember where the run stopped.</text>
-  </g>
+  <rect class="green-card" x="822" y="702" rx="24" width="558" height="84"/>
+  <rect x="844" y="717" rx="10" width="134" height="23" fill="#ebf8f0" stroke="#c3e9d2"/>
+  <text class="chip-text green-text" x="911" y="732.5" text-anchor="middle">RESEARCH AGENTS</text>
+  <text class="node-title" x="1101" y="742" text-anchor="middle">Research agents with sources</text>
+  <text class="node-sub" x="1101" y="765" text-anchor="middle">Separate workspace, provenance, and untrusted-input handling</text>
+  <path class="connector-soft" d="M499 786V810H800"/>
+  <path class="connector-soft" d="M1101 786V810H800"/>
 
-  <g>
-    <rect class="card" x="1100" y="570" width="420" height="196" rx="24"/>
-    <rect x="1100" y="570" width="6" height="196" rx="3" fill="#b37a2c"/>
-    <text class="service-title" x="1132" y="606">Identity fencing</text>
-    <text class="service-body" x="1132" y="636">A result is accepted only when stage_revision,</text>
-    <text class="service-body" x="1132" y="661">packet_revision, and active_launch_id all match.</text>
-    <line class="hairline" x1="1132" y1="686" x2="1488" y2="686"/>
-    <text class="service-body" x="1132" y="716">Late, stale, or misrouted reports become evidence;</text>
-    <text class="service-body" x="1132" y="741">they cannot rewrite a newer plan.</text>
-  </g>
+  <rect class="box" x="220" y="810" rx="22" width="1160" height="80"/>
+  <text class="node-title" x="800" y="838" text-anchor="middle">Recheck the actual result</text>
+  <text class="node-sub" x="800" y="862" text-anchor="middle">Changed files + allowed scope + tests + Git state + runtime results — an agent’s self-report is not enough</text>
 
-  <g>
-    <rect class="card" x="1100" y="788" width="420" height="244" rx="24"/>
-    <rect x="1100" y="788" width="6" height="244" rx="3" fill="#2b8a63"/>
-    <text class="service-title" x="1132" y="824">Recoverable history: H0 / H1 / H2</text>
-    <text class="service-body" x="1132" y="854">H0 captures observable, redacted events.</text>
-    <text class="service-body" x="1132" y="879">H1 saves bounded checkpoints at real handoffs.</text>
-    <text class="service-body" x="1132" y="904">H2 retrieves exact events and evidence by reference.</text>
-    <line class="hairline" x1="1132" y1="929" x2="1488" y2="929"/>
-    <text class="service-body" x="1132" y="959">Large payloads enter content-addressed blobs.</text>
-    <text class="service-body" x="1132" y="984">Capture fails soft and never breaks a native turn.</text>
-    <text class="node-note" x="1132" y="1010">Current mechanical reality always outranks old prose</text>
-  </g>
+  <rect class="violet-card" x="420" y="914" rx="24" width="710" height="76"/>
+  <rect x="442" y="929" rx="10" width="106" height="23" fill="#f2edff" stroke="#d6c8fa"/>
+  <text class="chip-text violet-text" x="495" y="944.5" text-anchor="middle">REVIEWER</text>
+  <text class="node-title" x="775" y="943" text-anchor="middle">Independent AI review</text>
+  <text class="node-sub" x="775" y="968" text-anchor="middle">Approve · request rework · raise high-risk concern; the reviewer cannot publish</text>
 
-  <g>
-    <rect class="card" x="1100" y="1054" width="420" height="134" rx="24"/>
-    <rect x="1100" y="1054" width="6" height="134" rx="3" fill="#4c76b9"/>
-    <text class="service-title" x="1132" y="1090">Research Broker</text>
-    <text class="service-body" x="1132" y="1120">Turns external facts into a sourced evidence manifest.</text>
-    <text class="service-body" x="1132" y="1145">It supplies information; the root still synthesizes it.</text>
-    <text class="node-note" x="1132" y="1170">External content is data, never a control instruction</text>
-  </g>
+  <rect class="red-card" x="1162" y="909" rx="22" width="218" height="86"/>
+  <text class="node-title" x="1271" y="940" text-anchor="middle">High-risk escalation</text>
+  <text class="node-sub" x="1271" y="962" text-anchor="middle">Material uncertainty only</text>
+  <text class="node-note" x="1271" y="979" text-anchor="middle">returns to the main agent</text>
+  <path class="connector-red" d="M1130 951H1162"/>
+  <text class="small red-text" x="1146" y="938" text-anchor="middle">ESCALATE</text>
+  <path class="connector-red" d="M420 952H264V744H220"/>
+  <text class="small red-text" x="276" y="937">REDO</text>
 
-  <g>
-    <rect class="card" x="1100" y="1204" width="420" height="112" rx="24"/>
-    <rect x="1100" y="1204" width="6" height="112" rx="3" fill="#53615b"/>
-    <text class="service-title" x="1132" y="1240">C2C review boundary</text>
-    <text class="service-body" x="1132" y="1270">prepare creates a bounded packet; record stores the reply.</text>
-    <text class="service-body" x="1132" y="1295">It does not call a model automatically or grant release.</text>
-  </g>
+  <path class="connector-green" d="M775 990V1011"/>
+  <rect class="green-card" x="220" y="1011" rx="22" width="558" height="72"/>
+  <text class="node-title" x="499" y="1040" text-anchor="middle">Safe integration workspace</text>
+  <text class="node-sub" x="499" y="1063" text-anchor="middle">Combine accepted changes into one clean candidate</text>
 
-  <g>
-    <rect class="green" x="80" y="1350" width="1440" height="78" rx="22"/>
-    <rect x="80" y="1350" width="7" height="78" rx="3.5" fill="#2b8a63"/>
-    <text class="hero-title" x="112" y="1382">The load-bearing parts of ZLoop</text>
-    <text class="hero-body" x="112" y="1407">Isolated write spaces, durable state, identity fencing, host-side mechanical acceptance, and a human release boundary.</text>
-  </g>
+  <rect class="violet-card" x="822" y="1011" rx="22" width="558" height="72"/>
+  <text class="node-title" x="1101" y="1040" text-anchor="middle">Final checks</text>
+  <text class="node-sub" x="1101" y="1063" text-anchor="middle">Recheck the candidate, repository state, and release conditions</text>
+  <path class="connector-green" d="M778 1047H822"/>
 
-  <line class="hairline" x1="80" y1="1450" x2="1520" y2="1450"/>
-  <text class="foot" x="80" y="1470">The main path shows what happens; the right side shows why it is trustworthy. Together they form a recoverable engineering loop.</text>
-  <text class="foot" x="1520" y="1470" text-anchor="end">Full product architecture</text>
+  <path class="connector-green" d="M1101 1083V1098H800"/>
+  <rect class="box" x="420" y="1098" rx="24" width="710" height="66"/>
+  <text class="node-title" x="775" y="1125" text-anchor="middle">A human approves the final merge</text>
+  <text class="node-sub" x="775" y="1148" text-anchor="middle">The only authority that can move the candidate into the main branch</text>
+
+  <rect class="box" x="220" y="1190" rx="22" width="558" height="82"/>
+  <text class="node-title" x="499" y="1218" text-anchor="middle">Persistent memory</text>
+  <text class="node-sub" x="499" y="1242" text-anchor="middle">Captured events, compact checkpoints, and evidence references</text>
+  <text class="node-note" x="499" y="1261" text-anchor="middle">survive context compression and restart</text>
+
+  <rect class="violet-card" x="822" y="1190" rx="22" width="558" height="82"/>
+  <text class="node-title" x="1101" y="1218" text-anchor="middle">Resume and trace the original record</text>
+  <text class="node-sub" x="1101" y="1242" text-anchor="middle">Resume from saved state and inspect original events by evidence reference</text>
+  <text class="node-note" x="1101" y="1261" text-anchor="middle">current repository reality always outranks an old summary</text>
+  <path class="connector-soft" d="M778 1231H822"/>
+
+  <line class="hairline" x1="72" y1="1293" x2="1528" y2="1293"/>
+  <text class="foot" x="72" y="1310">ZCode decides. ZLoop remembers, schedules, checks, and recovers. Agents work separately. A human controls the final merge.</text>
 </svg>
