@@ -1,273 +1,103 @@
-<svg id="architecture"  xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1320" role="img" aria-labelledby="title desc">
-  <title id="title">ZCode LOOP Orchestra architecture</title>
-  <desc id="desc">ZCode LOOP 控制回路架构：展示用户意图、根对话、规划、确定性生命周期控制、执行平面、证据、复核、合并、人工发布权与只读观察。</desc>
+<svg id="architecture" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1320" role="img" aria-labelledby="title desc">
+  <title id="title">ZCode LOOP Orchestra 架构</title>
+  <desc id="desc">ZCode 原生架构图，展示 Run、Stage、Wave、控制库、工作树、证据、物化、审计、晋升与恢复流程。</desc>
   <defs>
-    <linearGradient id="pageGlow" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#ffffff"/>
-      <stop offset="1" stop-color="#eef1f5"/>
-    </linearGradient>
-    <linearGradient id="blueWash" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#ffffff"/>
-      <stop offset="1" stop-color="#eef5ff"/>
-    </linearGradient>
-    <linearGradient id="violetWash" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#ffffff"/>
-      <stop offset="1" stop-color="#f4f0ff"/>
-    </linearGradient>
-    <filter id="shadow" x="-20%" y="-20%" width="140%" height="160%">
-      <feDropShadow dx="0" dy="14" stdDeviation="22" flood-color="#7a8492" flood-opacity="0.16"/>
-    </filter>
-    <filter id="shadowSoft" x="-20%" y="-20%" width="140%" height="150%">
-      <feDropShadow dx="0" dy="8" stdDeviation="14" flood-color="#7a8492" flood-opacity="0.10"/>
-    </filter>
-    <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto" markerUnits="strokeWidth">
-      <path d="M0,0 L10,5 L0,10 z" fill="#8f98a5"/>
-    </marker>
-    <marker id="arrowBlue" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto" markerUnits="strokeWidth">
-      <path d="M0,0 L10,5 L0,10 z" fill="#1267e5"/>
-    </marker>
-    <marker id="arrowGreen" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto" markerUnits="strokeWidth">
-      <path d="M0,0 L10,5 L0,10 z" fill="#168a50"/>
-    </marker>
-    <marker id="arrowRed" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto" markerUnits="strokeWidth">
-      <path d="M0,0 L10,5 L0,10 z" fill="#c5413a"/>
-    </marker>
+    <linearGradient id="pageGlow" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ffffff"/><stop offset="1" stop-color="#eef1f5"/></linearGradient>
+    <linearGradient id="blueWash" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ffffff"/><stop offset="1" stop-color="#eef5ff"/></linearGradient>
+    <linearGradient id="violetWash" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ffffff"/><stop offset="1" stop-color="#f4f0ff"/></linearGradient>
+    <filter id="shadowSoft" x="-20%" y="-20%" width="140%" height="150%"><feDropShadow dx="0" dy="8" stdDeviation="14" flood-color="#7a8492" flood-opacity="0.10"/></filter>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L10,5 L0,10 z" fill="#8f98a5"/></marker>
+    <marker id="arrowGreen" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L10,5 L0,10 z" fill="#168a50"/></marker>
+    <marker id="arrowRed" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L10,5 L0,10 z" fill="#c5413a"/></marker>
   </defs>
   <style>
     #architecture{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","SF Pro Text",Inter,"Segoe UI",Roboto,Arial,sans-serif;
+      --bg:#f7f7f5;--surface:#ffffff;--surface-2:#f0f1ef;--ink:#151619;--muted:#666a73;--faint:#989da6;
+      --line:#d9dce1;--line-strong:#8f98a5;--shadow:#7a8492;
+      --blue:#1267e5;--blue-soft:#eaf3ff;--blue-stroke:#b9d6ff;--blue-wash-b:#eef5ff;
+      --green:#168a50;--green-soft:#ebf8f0;--green-stroke:#c3e9d2;
+      --violet:#7651c9;--violet-soft:#f2edff;--violet-stroke:#d6c8fa;--violet-wash-b:#f4f0ff;
+      --amber:#a86d00;--amber-soft:#fff6de;--amber-stroke:#edd49a;
+      --red:#c5413a;--red-soft:#fff0ee;--red-stroke:#f0beb9;
     }
-        .page{fill:#f7f7f5} .decor{fill:url(#pageGlow)}
-    .title{fill:#151619;font-size:42px;font-weight:710;letter-spacing:-1.6px}
-    .subtitle{fill:#666a73;font-size:17px;font-weight:430;letter-spacing:-0.15px}
-    .eyebrow{fill:#989da6;font-size:12px;font-weight:700;letter-spacing:1.8px}
-    .metric-value{fill:#151619;font-size:26px;font-weight:720;letter-spacing:-0.8px}
-    .metric-label{fill:#666a73;font-size:12px;font-weight:610}
-    .metric-sub{fill:#989da6;font-size:11px;font-weight:460}
-    .stage{fill:#989da6;font-size:11px;font-weight:760;letter-spacing:1.8px}
-    .node-title{fill:#151619;font-size:18px;font-weight:690;letter-spacing:-0.3px}
-    .node-sub{fill:#666a73;font-size:12.2px;font-weight:460}
-    .node-note{fill:#989da6;font-size:11px;font-weight:500}
-    .chip-text{font-size:10px;font-weight:750;letter-spacing:.35px}
-    .small{fill:#666a73;font-size:10.5px;font-weight:500}
-    .foot{fill:#989da6;font-size:10.5px;font-weight:500}
-    .box{fill:#ffffff;stroke:#d9dce1;stroke-width:1}
-    .box-soft{fill:#f0f1ef;stroke:#d9dce1;stroke-width:1}
-    .blue-card{fill:url(#blueWash);stroke:#b9d6ff;stroke-width:1.2}
-    .green-card{fill:#ffffff;stroke:#c3e9d2;stroke-width:1.2}
-    .violet-card{fill:url(#violetWash);stroke:#d6c8fa;stroke-width:1.2}
-    .amber-card{fill:#ffffff;stroke:#edd49a;stroke-width:1.2}
-    .red-card{fill:#ffffff;stroke:#f0beb9;stroke-width:1.2}
-    .connector{fill:none;stroke:#8f98a5;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round;marker-end:url(#arrow)}
-    .connector-soft{fill:none;stroke:#d9dce1;stroke-width:1.3;stroke-linecap:round;stroke-linejoin:round}
-    .connector-blue{fill:none;stroke:#1267e5;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round;marker-end:url(#arrowBlue)}
-    .connector-green{fill:none;stroke:#168a50;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round;marker-end:url(#arrowGreen)}
-    .connector-red{fill:none;stroke:#c5413a;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round;marker-end:url(#arrowRed);stroke-dasharray:6 7}
-    .hairline{stroke:#d9dce1;stroke-width:1}
-    .dot-blue{fill:#1267e5} .dot-green{fill:#168a50} .dot-violet{fill:#7651c9} .dot-ink{fill:#151619}
-    .metric,.raised{filter:url(#shadowSoft)} .hero{filter:url(#shadow)}
-    .blue-text{fill:#1267e5} .green-text{fill:#168a50} .violet-text{fill:#7651c9} .amber-text{fill:#a86d00} .red-text{fill:#c5413a}
+    .page{fill:var(--bg)}.decor{fill:url(#pageGlow)}.title{fill:var(--ink);font-size:42px;font-weight:710;letter-spacing:-1.6px}
+    .subtitle{fill:var(--muted);font-size:17px;font-weight:430;letter-spacing:-.15px}.eyebrow{fill:var(--faint);font-size:12px;font-weight:700;letter-spacing:1.8px}
+    .metric-value{fill:var(--ink);font-size:26px;font-weight:720;letter-spacing:-.8px}.metric-label{fill:var(--muted);font-size:12px;font-weight:610}.metric-sub{fill:var(--faint);font-size:11px;font-weight:460}
+    .stage{fill:var(--faint);font-size:11px;font-weight:760;letter-spacing:1.8px}.node-title{fill:var(--ink);font-size:18px;font-weight:690;letter-spacing:-.3px}
+    .node-sub{fill:var(--muted);font-size:12.2px;font-weight:460}.node-note{fill:var(--faint);font-size:11px;font-weight:500}.chip-text{font-size:10px;font-weight:750;letter-spacing:.35px}
+    .small{fill:var(--muted);font-size:10.5px;font-weight:500}.foot{fill:var(--faint);font-size:10.5px;font-weight:500}
+    .box{fill:var(--surface);stroke:var(--line);stroke-width:1}.blue-card{fill:url(#blueWash);stroke:var(--blue-stroke);stroke-width:1.2}
+    .green-card{fill:var(--surface);stroke:var(--green-stroke);stroke-width:1.2}.violet-card{fill:url(#violetWash);stroke:var(--violet-stroke);stroke-width:1.2}
+    .amber-card{fill:var(--surface);stroke:var(--amber-stroke);stroke-width:1.2}.red-card{fill:var(--red-soft);stroke:var(--red-stroke);stroke-width:1.2}
+    .connector{fill:none;stroke:var(--line-strong);stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round;marker-end:url(#arrow)}
+    .connector-soft{fill:none;stroke:var(--line);stroke-width:1.3;stroke-linecap:round;stroke-linejoin:round}
+    .connector-green{fill:none;stroke:var(--green);stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round;marker-end:url(#arrowGreen)}
+    .connector-red{fill:none;stroke:var(--red);stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:6 7;marker-end:url(#arrowRed)}
+    .hairline{stroke:var(--line);stroke-width:1}.metric,.raised{filter:url(#shadowSoft)}.blue-text{fill:var(--blue)}.green-text{fill:var(--green)}
+    .violet-text{fill:var(--violet)}.amber-text{fill:var(--amber)}.red-text{fill:var(--red)}
   </style>
 
   <rect class="page" width="1600" height="1320"/>
-  <circle class="decor" cx="1492" cy="8" r="260" opacity=".65"/>
-  <circle class="decor" cx="94" cy="1260" r="220" opacity=".5"/>
+  <circle class="decor" cx="1492" cy="8" r="260" opacity=".65"/><circle class="decor" cx="94" cy="1260" r="220" opacity=".5"/>
 
-  <!-- Header -->
-  <text class="eyebrow" x="72" y="54">SYSTEM ARCHITECTURE / CONTROL PLANE</text>
+  <text class="eyebrow" x="72" y="54">系统架构 · ZCODE LOOP 控制回路</text>
   <text class="title" x="72" y="96">ZCode LOOP Orchestra</text>
-  <text class="subtitle" x="72" y="127">持续补位、独立复核的 ZCode 多智能体控制层。</text>
+  <text class="subtitle" x="72" y="127">ZCode 原生的 Run、Wave、证据与受控晋升系统，用于可审计的并行工程。</text>
 
-  <!-- Metrics -->
-  <g class="metric raised">
-    <rect class="box" x="72" y="160" rx="20" ry="20" width="330" height="84"/>
-    <text class="metric-value" x="96" y="199">8–15</text>
-    <text class="metric-label" x="143" y="197">物理工作进程</text>
-    <text class="metric-sub" x="96" y="221">每个波次的已测并发规模</text>
-    <rect x="72" y="160" width="4" height="84" rx="2" fill="#1267e5"/>
-  </g>
-  <g class="metric raised">
-    <rect class="box" x="418" y="160" rx="20" ry="20" width="330" height="84"/>
-    <text class="metric-value" x="442" y="199">53%+</text>
-    <text class="metric-label" x="489" y="197">输入 Token 削减</text>
-    <text class="metric-sub" x="442" y="221">上下文裁剪后的结果</text>
-    <rect x="418" y="160" width="4" height="84" rx="2" fill="#1267e5"/>
-  </g>
-  <g class="metric raised">
-    <rect class="box" x="764" y="160" rx="20" ry="20" width="330" height="84"/>
-    <text class="metric-value" x="788" y="199">3</text>
-    <text class="metric-label" x="865" y="197">审计门</text>
-    <text class="metric-sub" x="788" y="221">规划 · 机械验收 · 独立复核</text>
-    <rect x="764" y="160" width="4" height="84" rx="2" fill="#a86d00"/>
-  </g>
-  <g class="metric raised">
-    <rect class="box" x="1110" y="160" rx="20" ry="20" width="418" height="84"/>
-    <text class="metric-value" x="1134" y="199">293</text>
-    <text class="metric-label" x="1181" y="197">自动化测试</text>
-    <text class="metric-sub" x="1134" y="221">当前验证套件</text>
-    <rect x="1110" y="160" width="4" height="84" rx="2" fill="#8f98a5"/>
+  <g class="metric raised"><rect class="box" x="72" y="160" rx="20" ry="20" width="330" height="84"/><text class="metric-value" x="96" y="199">RUN</text><text class="metric-label" x="166" y="197">持久控制记录</text><text class="metric-sub" x="96" y="221">SQLite S 与生命周期事件</text><rect x="72" y="160" width="4" height="84" rx="2" fill="#1267e5"/></g>
+  <g class="metric raised"><rect class="box" x="418" y="160" rx="20" ry="20" width="330" height="84"/><text class="metric-value" x="442" y="199">STAGE</text><text class="metric-label" x="548" y="197">版本栅栏阶段</text><text class="metric-sub" x="442" y="221">PLANNING → PROMOTED</text><rect x="418" y="160" width="4" height="84" rx="2" fill="#a86d00"/></g>
+  <g class="metric raised"><rect class="box" x="764" y="160" rx="20" ry="20" width="330" height="84"/><text class="metric-value" x="788" y="199">WAVE</text><text class="metric-label" x="900" y="197">冷波次监督器</text><text class="metric-sub" x="788" y="221">按依赖关系执行 poll()</text><rect x="764" y="160" width="4" height="84" rx="2" fill="#168a50"/></g>
+  <g class="metric raised"><rect class="box" x="1110" y="160" rx="20" ry="20" width="418" height="84"/><text class="metric-value" x="1134" y="199">C2C</text><text class="metric-label" x="1212" y="197">脱敏审计包</text><text class="metric-sub" x="1134" y="221">PREPARE → RECORD</text><rect x="1110" y="160" width="4" height="84" rx="2" fill="#7651c9"/></g>
+
+  <line class="hairline" x1="160" y1="286" x2="160" y2="1254" opacity=".9"/><circle cx="160" cy="299" r="4" fill="#8f98a5"/>
+  <text class="stage" x="72" y="304">输入</text><text class="stage" x="72" y="400">运行</text><text class="stage" x="72" y="502">规划</text><text class="stage" x="72" y="611">控制</text>
+  <text class="stage" x="72" y="728">执行</text><text class="stage" x="72" y="840">证据</text><text class="stage" x="72" y="948">物化</text>
+  <text class="stage" x="72" y="1041">审计</text><text class="stage" x="72" y="1124">晋升</text><text class="stage" x="72" y="1226">记录</text>
+
+  <path class="connector" d="M800 338 L800 356"/><path class="connector" d="M800 431 L800 454"/><path class="connector" d="M800 555 L800 575"/>
+  <path class="connector" d="M800 681 L800 702"/><path class="connector" d="M800 786 L800 810"/><path class="connector" d="M800 890 L800 909"/>
+  <path class="connector" d="M800 995 L800 1011"/><path class="connector" d="M800 1083 L800 1098"/><path class="connector" d="M800 1164 L800 1190"/>
+
+  <g class="raised"><rect class="box" x="220" y="268" rx="22" ry="22" width="1160" height="70"/>
+    <text class="node-title" x="800" y="296" text-anchor="middle">开发者目标</text><text class="node-sub" x="800" y="319" text-anchor="middle">项目目标先进入 Run；规范分支始终位于工作进程池之外。</text>
   </g>
 
-  <!-- Stage rail -->
-  <line class="hairline" x1="160" y1="286" x2="160" y2="1254" opacity=".9"/>
-  <circle cx="160" cy="299" r="4" fill="#8f98a5"/>
-  <text class="stage" x="72" y="304">INTENT</text>
-  <text class="stage" x="72" y="400">COORDINATE</text>
-  <text class="stage" x="72" y="502">PLAN</text>
-  <text class="stage" x="72" y="611">CONTROL</text>
-  <text class="stage" x="72" y="728">EXECUTE</text>
-  <text class="stage" x="72" y="840">EVIDENCE</text>
-  <text class="stage" x="72" y="948">VERIFY</text>
-  <text class="stage" x="72" y="1041">INTEGRATE</text>
-  <text class="stage" x="72" y="1124">RELEASE</text>
-  <text class="stage" x="72" y="1226">OBSERVE</text>
-
-  <!-- Core vertical spine -->
-  <path class="connector" d="M800 338 L800 356"/>
-  <path class="connector" d="M800 431 L800 454"/>
-  <path class="connector" d="M800 555 L800 575"/>
-  <path class="connector" d="M800 681 L800 702"/>
-  <path class="connector" d="M800 786 L800 810"/>
-  <path class="connector" d="M800 890 L800 914"/>
-
-  <!-- 用户目标 -->
-  <g class="raised">
-    <rect class="box" x="220" y="268" rx="22" ry="22" width="1160" height="70"/>
-    <text class="node-title" x="800" y="296" text-anchor="middle">用户目标</text>
-    <text class="node-sub" x="800" y="319" text-anchor="middle">用户提出一个目标；最终合并和发布始终由人触发。</text>
+  <g class="raised"><rect class="blue-card" x="220" y="356" rx="24" ry="24" width="1160" height="75"/>
+    <rect x="242" y="371" rx="10" ry="10" width="122" height="23" fill="#eaf3ff" stroke="#b9d6ff"/><text class="chip-text blue-text" x="303" y="386.5" text-anchor="middle">控制入口</text>
+    <text class="node-title" x="800" y="384" text-anchor="middle">zloop run → stage</text><text class="node-sub" x="800" y="409" text-anchor="middle">创建持久 Run，打开带风险边界的 Stage，并在派发前记录基线引用。</text>
   </g>
 
-  <!-- Coordinator -->
-  <g class="hero">
-    <rect class="blue-card" x="220" y="356" rx="24" ry="24" width="1160" height="75"/>
-    <rect x="242" y="371" rx="10" ry="10" width="146" height="23" fill="#eaf3ff" stroke="#b9d6ff"/>
-    <text class="chip-text blue-text" x="315" y="386.5" text-anchor="middle">根对话阶段</text>
-    <text class="node-title" x="800" y="384" text-anchor="middle">ZCode 根对话</text>
-    <text class="node-sub" x="800" y="409" text-anchor="middle">只规划一次、分派边界明确的工作、裁决真正异常，并汇总最终结果</text>
+  <g class="raised"><rect class="box" x="220" y="454" rx="21" ry="21" width="558" height="101"/><text class="eyebrow" x="244" y="480">C2C-P</text><text class="node-title" x="244" y="510">规划审查包</text><text class="node-sub" x="244" y="535">有界、脱敏的计划材料与已记录的规划回应。</text></g>
+  <g class="raised"><rect class="box" x="822" y="454" rx="21" ry="21" width="558" height="101"/><text class="eyebrow" x="846" y="480">WAVE PROPOSAL</text><text class="node-title" x="846" y="510">任务包与范围</text><text class="node-sub" x="846" y="535">依赖关系、写入范围、验收命令与任务包版本。</text></g><path class="connector-soft" d="M778 504 H822"/>
+
+  <g class="raised"><rect class="amber-card" x="220" y="575" rx="24" ry="24" width="1160" height="106"/>
+    <text class="node-title" x="800" y="603" text-anchor="middle">ControlStore 与生命周期门禁</text><text class="node-sub" x="800" y="626" text-anchor="middle">SQLite S 持久化状态；监督器负责一条明确的 Wave 控制循环。</text>
+    <g><rect x="247" y="643" width="255" height="23" rx="11.5" fill="#fff6de" stroke="#edd49a"/><text class="small" x="374.5" y="658" text-anchor="middle">Run / Stage / Packet 行</text>
+      <rect x="520" y="643" width="255" height="23" rx="11.5" fill="#fff6de" stroke="#edd49a"/><text class="small" x="647.5" y="658" text-anchor="middle">版本与启动栅栏</text>
+      <rect x="793" y="643" width="255" height="23" rx="11.5" fill="#fff6de" stroke="#edd49a"/><text class="small" x="920.5" y="658" text-anchor="middle">所有者锁与心跳</text>
+      <rect x="1066" y="643" width="287" height="23" rx="11.5" fill="#fff6de" stroke="#edd49a"/><text class="small" x="1209.5" y="658" text-anchor="middle">状态迁移门禁</text></g>
   </g>
 
-  <!-- Plan row -->
-  <g class="raised">
-    <rect class="box" x="220" y="454" rx="21" ry="21" width="558" height="101"/>
-    <text class="eyebrow" x="244" y="480">决策模型</text>
-    <text class="node-title" x="244" y="510">有界决策骨架</text>
-    <text class="node-sub" x="244" y="535">依赖关系、边界与验收证据。</text>
-  </g>
-  <g class="raised">
-    <rect class="box" x="822" y="454" rx="21" ry="21" width="558" height="101"/>
-    <text class="eyebrow" x="846" y="480">执行中间表示</text>
-    <text class="node-title" x="846" y="510">Packet DAG</text>
-    <text class="node-sub" x="846" y="535">自包含任务与明确的路径所有权。</text>
-  </g>
-  <path class="connector-soft" d="M778 504 H822"/>
+  <g class="raised"><rect class="green-card" x="220" y="702" rx="24" ry="24" width="558" height="84"/><rect x="242" y="717" rx="10" ry="10" width="114" height="23" fill="#ebf8f0" stroke="#c3e9d2"/><text class="chip-text green-text" x="299" y="732.5" text-anchor="middle">监督器</text><text class="node-title" x="499" y="742" text-anchor="middle">冷波次监督器</text><text class="node-sub" x="499" y="765" text-anchor="middle">按依赖关系派发，并使用非阻塞 poll() 驱动</text></g>
+  <g class="raised"><rect class="green-card" x="822" y="702" rx="24" ry="24" width="558" height="84"/><rect x="844" y="717" rx="10" ry="10" width="114" height="23" fill="#ebf8f0" stroke="#c3e9d2"/><text class="chip-text green-text" x="901" y="732.5" text-anchor="middle">后端</text><text class="node-title" x="1101" y="742" text-anchor="middle">工作进程与报告</text><text class="node-sub" x="1101" y="765" text-anchor="middle">启动、收集、接受结果并分类重试</text></g>
+  <path class="connector-soft" d="M499 786 V800 H800"/><path class="connector-soft" d="M1101 786 V800 H800"/>
 
-  <!-- Control -->
-  <g class="raised">
-    <rect class="amber-card" x="220" y="575" rx="24" ry="24" width="1160" height="106"/>
-    <text class="node-title" x="800" y="603" text-anchor="middle">确定性生命周期控制</text>
-    <text class="node-sub" x="800" y="626" text-anchor="middle">脚本负责计数、等待和状态迁移；模型负责判断。</text>
-    <g>
-      <rect x="247" y="643" width="255" height="23" rx="11.5" fill="#fff6de" stroke="#edd49a"/>
-      <text class="small" x="374.5" y="658" text-anchor="middle">状态机</text>
-      <rect x="520" y="643" width="255" height="23" rx="11.5" fill="#fff6de" stroke="#edd49a"/>
-      <text class="small" x="647.5" y="658" text-anchor="middle">并发目标与持续补位</text>
-      <rect x="793" y="643" width="255" height="23" rx="11.5" fill="#fff6de" stroke="#edd49a"/>
-      <text class="small" x="920.5" y="658" text-anchor="middle">重试与死信</text>
-      <rect x="1066" y="643" width="287" height="23" rx="11.5" fill="#fff6de" stroke="#edd49a"/>
-      <text class="small" x="1209.5" y="658" text-anchor="middle">显式角色与模型锁定</text>
-    </g>
-  </g>
+  <g class="raised"><rect class="box" x="220" y="810" rx="22" ry="22" width="1160" height="80"/><text class="node-title" x="800" y="838" text-anchor="middle">每次启动一个 Git 工作树</text><text class="node-sub" x="800" y="862" text-anchor="middle">分离工作树、明确路径范围、差异枚举与持久化的尝试身份。</text></g>
 
-  <!-- Execution row -->
-  <g class="hero">
-    <rect class="green-card" x="220" y="702" rx="24" ry="24" width="558" height="84"/>
-    <rect x="242" y="717" rx="10" ry="10" width="121" height="23" fill="#ebf8f0" stroke="#c3e9d2"/>
-    <text class="chip-text green-text" x="302.5" y="732.5" text-anchor="middle">执行阶段</text>
-    <text class="node-title" x="499" y="742" text-anchor="middle">ZCode Desktop 平面</text>
-    <text class="node-sub" x="499" y="765" text-anchor="middle">可见原生子代理与根对话通信</text>
-  </g>
-  <g class="hero">
-    <rect class="green-card" x="822" y="702" rx="24" ry="24" width="558" height="84"/>
-    <rect x="844" y="717" rx="10" ry="10" width="121" height="23" fill="#ebf8f0" stroke="#c3e9d2"/>
-    <text class="chip-text green-text" x="904.5" y="732.5" text-anchor="middle">执行阶段</text>
-    <text class="node-title" x="1101" y="742" text-anchor="middle">受监督的无头执行平面</text>
-    <text class="node-sub" x="1101" y="765" text-anchor="middle">无头工作进程、隔离工作树与生命周期名册</text>
-  </g>
-  <path class="connector-soft" d="M499 786 V810 H800"/>
-  <path class="connector-soft" d="M1101 786 V810 H800"/>
+  <g class="raised"><rect class="violet-card" x="220" y="909" rx="22" ry="22" width="558" height="86"/><text class="node-title" x="499" y="940" text-anchor="middle">物化任务包</text><text class="node-sub" x="499" y="964" text-anchor="middle">先把执行者的差异重新应用到私有暂存区，再进行验收。</text><text class="node-note" x="499" y="982" text-anchor="middle">候选提交带有 Stage 与 Packet 身份</text></g>
+  <g class="raised"><rect class="red-card" x="822" y="909" rx="22" ry="22" width="558" height="86"/><text class="node-title" x="1101" y="940" text-anchor="middle">验收失败时回滚</text><text class="node-sub" x="1101" y="964" text-anchor="middle">把暂存区恢复到物化前 SHA，将失败限制在当前候选内。</text><text class="node-note" x="1101" y="982" text-anchor="middle">按策略保留候选提交作为证据</text></g>
+  <path class="connector-red" d="M822 952 H760 V850 H700"/><text class="small red-text" x="774" y="938" text-anchor="end">失败</text>
 
-  <!-- Evidence -->
-  <g class="raised">
-    <rect class="box" x="220" y="810" rx="22" ry="22" width="1160" height="80"/>
-    <text class="node-title" x="800" y="838" text-anchor="middle">L0 / L1 机械证据</text>
-    <text class="node-sub" x="800" y="862" text-anchor="middle">产物、测试、差异边界、Schema 与生命周期证据——自报 PASS 不具备发布效力</text>
-  </g>
+  <g class="raised"><rect class="violet-card" x="220" y="1011" rx="22" ry="22" width="558" height="72"/><rect x="242" y="1026" rx="10" ry="10" width="118" height="23" fill="#f2edff" stroke="#d6c8fa"/><text class="chip-text violet-text" x="301" y="1041.5" text-anchor="middle">C2C-A</text><text class="node-title" x="499" y="1040" text-anchor="middle">结果记录</text><text class="node-sub" x="499" y="1063" text-anchor="middle">把有界复核回应记录到暂存候选上</text></g>
+  <g class="raised"><rect class="blue-card" x="822" y="1011" rx="22" ry="22" width="558" height="72"/><text class="node-title" x="1101" y="1040" text-anchor="middle">晋升就绪检查</text><text class="node-sub" x="1101" y="1063" text-anchor="middle">Stage、Packet、证据与预期 HEAD 保持一致</text></g><path class="connector-soft" d="M778 1047 H822"/>
 
-  <!-- Verify -->
-  <g class="hero">
-    <rect class="violet-card" x="420" y="914" rx="24" ry="24" width="710" height="76"/>
-    <rect x="442" y="929" rx="10" ry="10" width="110" height="23" fill="#f2edff" stroke="#d6c8fa"/>
-    <text class="chip-text violet-text" x="497" y="944.5" text-anchor="middle">复核阶段</text>
-    <text class="node-title" x="775" y="943" text-anchor="middle">L2 独立复核</text>
-    <text class="node-sub" x="775" y="968" text-anchor="middle">通过 · 进入合并  |  重做 · 返回执行  |  升级 · 进入有界 L3 裁决</text>
-  </g>
-  <g class="raised">
-    <rect class="red-card" x="1162" y="909" rx="22" ry="22" width="218" height="86"/>
-    <text class="node-title" x="1271" y="940" text-anchor="middle">L3 裁决</text>
-    <text class="node-sub" x="1271" y="962" text-anchor="middle">仅处理实质性不确定</text>
-    <text class="node-note" x="1271" y="979" text-anchor="middle">有界返回根对话</text>
-  </g>
-  <path class="connector-red" d="M1130 951 H1162"/>
-  <text class="small red-text" x="1146" y="938" text-anchor="middle">升级</text>
-  <path class="connector-red" d="M420 952 H264 V744 H220"/>
-  <text class="small red-text" x="276" y="937">重做</text>
-  <path class="connector-red" d="M1380 950 H1454 V393 H1380"/>
+  <g class="raised"><rect class="green-card" x="220" y="1098" rx="22" ry="22" width="558" height="66"/><text class="node-title" x="499" y="1125" text-anchor="middle">CAS + git merge --ff-only</text><text class="node-sub" x="499" y="1148" text-anchor="middle">受控写入规范分支，不隐藏覆盖其他变更</text></g>
+  <g class="raised"><rect class="box" x="822" y="1098" rx="22" ry="22" width="558" height="66"/><text class="node-title" x="1101" y="1125" text-anchor="middle">人工发布权</text><text class="node-sub" x="1101" y="1148" text-anchor="middle">最终合并或发布只能由人触发</text></g>
+  <path class="connector-green" d="M1101 1083 V1098 H800"/><path class="connector-green" d="M778 1131 H822"/>
 
-  <!-- Integrate row -->
-  <path class="connector-green" d="M775 990 V1011"/>
-  <g class="raised">
-    <rect class="green-card" x="220" y="1011" rx="22" ry="22" width="558" height="72"/>
-    <text class="node-title" x="499" y="1040" text-anchor="middle">串行合并队列</text>
-    <text class="node-sub" x="499" y="1063" text-anchor="middle">由单一受控写入者合并已验收产物</text>
-  </g>
-  <g class="raised">
-    <rect class="violet-card" x="822" y="1011" rx="22" ry="22" width="558" height="72"/>
-    <text class="node-title" x="1101" y="1040" text-anchor="middle">发布复核</text>
-    <text class="node-sub" x="1101" y="1063" text-anchor="middle">对抗式核验；无发布权限</text>
-  </g>
-  <path class="connector-green" d="M778 1047 H822"/>
-
-  <!-- Release / human -->
-  <path class="connector-green" d="M1101 1083 V1098 H800"/>
-  <g class="raised">
-    <rect class="box" x="420" y="1098" rx="24" ry="24" width="710" height="66"/>
-    <text class="node-title" x="775" y="1125" text-anchor="middle">L4 人类维护者</text>
-    <text class="node-sub" x="775" y="1148" text-anchor="middle">唯一可以触发合并或发布的一方</text>
-  </g>
-
-  <!-- Observe -->
-  <g class="raised">
-    <rect class="box" x="220" y="1190" rx="22" ry="22" width="558" height="82"/>
-    <text class="node-title" x="499" y="1218" text-anchor="middle">证据存储</text>
-    <text class="node-sub" x="499" y="1242" text-anchor="middle">事件 · 账本 · 报告 · Desktop/无头名册</text>
-    <text class="node-note" x="499" y="1261" text-anchor="middle">实际模型 · Token 计量 · 语义任务名映射</text>
-  </g>
-  <g class="raised">
-    <rect class="violet-card" x="822" y="1190" rx="22" ry="22" width="558" height="82"/>
-    <text class="node-title" x="1101" y="1218" text-anchor="middle">只读 Agent 监测 Web UI :8765</text>
-    <text class="node-sub" x="1101" y="1242" text-anchor="middle">任务 · 模型 · 平面 · 健康 · 补位缺口</text>
-    <text class="node-note" x="1101" y="1261" text-anchor="middle">不负责调度、裁决或授权发布</text>
-  </g>
+  <g class="raised"><rect class="box" x="220" y="1190" rx="22" ry="22" width="558" height="82"/><text class="node-title" x="499" y="1218" text-anchor="middle">zloop.hook</text><text class="node-sub" x="499" y="1242" text-anchor="middle">绑定会话与项目，捕获工具生命周期事件</text><text class="node-note" x="499" y="1261" text-anchor="middle">H0 日志可降级；敏感内容始终脱敏</text></g>
+  <g class="raised"><rect class="violet-card" x="822" y="1190" rx="22" ry="22" width="558" height="82"/><text class="node-title" x="1101" y="1218" text-anchor="middle">历史与恢复</text><text class="node-sub" x="1101" y="1242" text-anchor="middle">查看 Run、Stage、证据、绑定和降级历史</text><text class="node-note" x="1101" y="1261" text-anchor="middle">通过持久化记录应对失败与重启</text></g>
   <path class="connector-soft" d="M778 1231 H822"/>
 
-  <!-- Footer -->
-  <line class="hairline" x1="72" y1="1293" x2="1528" y2="1293" opacity=".75"/>
-  <text class="foot" x="72" y="1310">LLMs own judgment, planning, independent 复核 and bounded adjudication. Scripts and 状态机s own waiting, polling, counting, refill and lifecycle transitions.</text>
-
-  <!-- Semantic legend -->
-  <g transform="translate(1212,1307)">
-    <circle class="dot-blue" cx="0" cy="0" r="4"/><text class="foot" x="10" y="3.5">编排</text>
-    <circle class="dot-green" cx="86" cy="0" r="4"/><text class="foot" x="96" y="3.5">执行</text>
-    <circle class="dot-violet" cx="164" cy="0" r="4"/><text class="foot" x="174" y="3.5">复核</text>
-    <circle class="dot-ink" cx="238" cy="0" r="4"/><text class="foot" x="248" y="3.5">人工发布权</text>
-  </g>
+  <line class="hairline" x1="72" y1="1293" x2="1528" y2="1293" opacity=".75"/><text class="foot" x="72" y="1310">ZCode 负责生命周期与证据边界；Git 是实际晋升依据；最终发布权始终由人掌握。</text>
 </svg>

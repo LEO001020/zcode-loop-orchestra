@@ -1,158 +1,78 @@
 <svg id="architecture" class="theme-light" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1220" role="img" aria-labelledby="title desc">
-        <title id="title">ZCode LOOP Orchestra simplified architecture</title>
-        <desc id="desc">A simplified premium keynote-style architecture diagram in Chinese showing ZCode LOOP entry, control, execution, evidence and release, and observation layers.</desc>
-        <defs>
-          <linearGradient id="pageGlow" x1="0" y1="0" x2="1" y2="1">
-            <stop offset="0" stop-color="var(--glow-a)"/>
-            <stop offset="1" stop-color="var(--glow-b)"/>
-          </linearGradient>
-          <linearGradient id="blueWash" x1="0" y1="0" x2="1" y2="1">
-            <stop offset="0" stop-color="var(--blue-wash-a)"/>
-            <stop offset="1" stop-color="var(--blue-wash-b)"/>
-          </linearGradient>
-          <linearGradient id="violetWash" x1="0" y1="0" x2="1" y2="1">
-            <stop offset="0" stop-color="var(--violet-wash-a)"/>
-            <stop offset="1" stop-color="var(--violet-wash-b)"/>
-          </linearGradient>
-          <filter id="shadow" x="-20%" y="-20%" width="140%" height="160%">
-            <feDropShadow dx="0" dy="14" stdDeviation="22" flood-color="var(--shadow)" flood-opacity="0.16"/>
-          </filter>
-          <filter id="shadowSoft" x="-20%" y="-20%" width="140%" height="150%">
-            <feDropShadow dx="0" dy="8" stdDeviation="14" flood-color="var(--shadow)" flood-opacity="0.10"/>
-          </filter>
-          <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto" markerUnits="strokeWidth">
-            <path d="M0,0 L10,5 L0,10 z" fill="var(--line-strong)"/>
-          </marker>
-        </defs>
-        <style>
-          #architecture{
-            --bg:#f7f7f5;--surface:#ffffff;--surface-2:#f0f1ef;--ink:#151619;--muted:#666a73;--faint:#989da6;
-            --line:#d9dce1;--line-strong:#8f98a5;--shadow:#7a8492;
-            --blue:#1267e5;--blue-soft:#eaf3ff;--blue-stroke:#b9d6ff;--blue-wash-a:#ffffff;--blue-wash-b:#eef5ff;
-            --green:#168a50;--green-soft:#ebf8f0;--green-stroke:#c3e9d2;
-            --violet:#7651c9;--violet-soft:#f2edff;--violet-stroke:#d6c8fa;--violet-wash-a:#ffffff;--violet-wash-b:#f4f0ff;
-            --amber:#a86d00;--amber-soft:#fff6de;--amber-stroke:#edd49a;
-            --glow-a:#ffffff;--glow-b:#eef1f5;
-            font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","SF Pro Text",Inter,"Segoe UI",Roboto,Arial,sans-serif;
-          }
-          #architecture.theme-dark{
-            --bg:#08090b;--surface:#111317;--surface-2:#171a1f;--ink:#f6f7f8;--muted:#a8aeb8;--faint:#737a86;
-            --line:#2a2f37;--line-strong:#737e8e;--shadow:#000000;
-            --blue:#66a6ff;--blue-soft:#0d1b2f;--blue-stroke:#234b7f;--blue-wash-a:#111722;--blue-wash-b:#0c1522;
-            --green:#55c983;--green-soft:#0f2118;--green-stroke:#24583a;
-            --violet:#ae8bff;--violet-soft:#1e1830;--violet-stroke:#523b7e;--violet-wash-a:#171421;--violet-wash-b:#12101b;
-            --amber:#e4ad45;--amber-soft:#251d0d;--amber-stroke:#624c1e;
-            --glow-a:#0d1118;--glow-b:#090a0c;
-          }
-          .page{fill:var(--bg)} .decor{fill:url(#pageGlow)}
-          .title{fill:var(--ink);font-size:42px;font-weight:710;letter-spacing:-1.3px}
-          .subtitle{fill:var(--muted);font-size:17px;font-weight:430;letter-spacing:-0.15px}
-          .eyebrow{fill:var(--faint);font-size:12px;font-weight:700;letter-spacing:1.8px}
-          .stage{fill:var(--faint);font-size:14px;font-weight:760;letter-spacing:1.5px}
-          .node-title{fill:var(--ink);font-size:18px;font-weight:690;letter-spacing:-0.3px}
-          .node-sub{fill:var(--muted);font-size:12.2px;font-weight:460}
-          .node-note{fill:var(--faint);font-size:11px;font-weight:520}
-          .section-note{fill:var(--muted);font-size:14px;font-weight:650;letter-spacing:-0.2px}
-          .foot{fill:var(--faint);font-size:10.8px;font-weight:500}
-          .box{fill:var(--surface);stroke:var(--line);stroke-width:1}
-          .blue-card{fill:url(#blueWash);stroke:var(--blue-stroke);stroke-width:1.2}
-          .green-card{fill:var(--surface);stroke:var(--green-stroke);stroke-width:1.2}
-          .violet-card{fill:url(#violetWash);stroke:var(--violet-stroke);stroke-width:1.2}
-          .amber-card{fill:var(--surface);stroke:var(--amber-stroke);stroke-width:1.2}
-          .connector{fill:none;stroke:var(--line-strong);stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round;marker-end:url(#arrow)}
-          .connector-soft{fill:none;stroke:var(--line);stroke-width:1.25;stroke-linecap:round;stroke-linejoin:round}
-          .hairline{stroke:var(--line);stroke-width:1}
-          .chip{font-size:10px;font-weight:760;letter-spacing:.35px}
-          .raised{filter:url(#shadowSoft)} .hero{filter:url(#shadow)}
-        </style>
-
-        <rect class="page" width="1600" height="1220"/>
-        <circle class="decor" cx="1502" cy="22" r="252" opacity=".65"/>
-        <circle class="decor" cx="110" cy="1160" r="210" opacity=".45"/>
-
-        <text class="eyebrow" x="72" y="54">SYSTEM ARCHITECTURE / SIMPLIFIED VIEW</text>
-        <text class="title" x="72" y="96">ZCode LOOP Orchestra</text>
-        <text class="subtitle" x="72" y="127">简化架构图 · 与完整控制回路保持一致的精简视图。</text>
-
-        <line class="hairline" x1="165" y1="198" x2="165" y2="1116" opacity=".9"/>
-        <circle cx="165" cy="212" r="4" fill="var(--line-strong)"/>
-        <text class="stage" x="78" y="218">入口</text>
-        <text class="stage" x="78" y="405">控制层</text>
-        <text class="stage" x="78" y="624">执行层</text>
-        <text class="stage" x="78" y="847">证据与发布</text>
-        <text class="stage" x="78" y="1056">观察层</text>
-
-        <g class="hero">
-          <rect class="box" x="250" y="168" rx="24" ry="24" width="575" height="92"/>
-          <text class="node-title" x="278" y="210">用户任务</text>
-          <text class="node-sub" x="278" y="238">目标、工作区、约束与验收标准</text>
-        </g>
-        <g class="hero">
-          <rect class="blue-card" x="858" y="168" rx="24" ry="24" width="492" height="92"/>
-          <text class="node-title" x="886" y="210">ZCode 根对话</text>
-          <text class="node-sub" x="886" y="238">只负责规划、异常裁决与最终整合</text>
-        </g>
-
-        <path class="connector" d="M800 286 V320"/>
-        <text class="section-note" x="800" y="306" text-anchor="middle">↓ 单次规划，形成可独立执行的任务包</text>
-
-        <g class="raised">
-          <rect class="amber-card" x="250" y="355" rx="24" ry="24" width="350" height="118"/>
-          <text class="node-title" x="278" y="405">Packet DAG</text>
-          <text class="node-sub" x="278" y="434">任务包、依赖与授权路径</text>
-        </g>
-        <g class="raised">
-          <rect class="amber-card" x="625" y="355" rx="24" ry="24" width="350" height="118"/>
-          <text class="node-title" x="653" y="405">状态机</text>
-          <text class="node-sub" x="653" y="434">计划、派发、报告、审查、完成</text>
-        </g>
-        <g class="raised">
-          <rect class="amber-card" x="1000" y="355" rx="24" ry="24" width="350" height="118"/>
-          <text class="node-title" x="1028" y="405">派发与补位</text>
-          <text class="node-sub" x="1028" y="434">保持并发，失败按规则重试</text>
-        </g>
-
-        <path class="connector" d="M800 500 V536"/>
-        <text class="section-note" x="800" y="522" text-anchor="middle">↓ 明确模型、角色、推理强度；禁止继承根模型</text>
-
-        <g class="hero">
-          <rect class="green-card" x="250" y="573" rx="24" ry="24" width="538" height="110"/>
-          <text class="node-title" x="278" y="623">ZCode Desktop 原生平面</text>
-          <text class="node-sub" x="278" y="652">少量可见子代理；适合交互和短任务</text>
-        </g>
-        <g class="hero">
-          <rect class="green-card" x="812" y="573" rx="24" ry="24" width="538" height="110"/>
-          <text class="node-title" x="840" y="623">受监督的 Headless 执行平面</text>
-          <text class="node-sub" x="840" y="652">宽波次执行；由生命周期监督器登记</text>
-        </g>
-
-        <path class="connector" d="M800 708 V744"/>
-        <text class="section-note" x="800" y="730" text-anchor="middle">↓ Worker 产出报告与改动；Verifier / Reviewer 只读核验</text>
-
-        <g class="raised">
-          <rect class="violet-card" x="250" y="781" rx="24" ry="24" width="350" height="126"/>
-          <text class="node-title" x="278" y="831">机械验收 L0/L1</text>
-          <text class="node-sub" x="278" y="860">测试、哈希、路径、Schema、差异</text>
-        </g>
-        <g class="raised">
-          <rect class="violet-card" x="625" y="781" rx="24" ry="24" width="350" height="126"/>
-          <text class="node-title" x="653" y="831">交叉核验 L2/L3</text>
-          <text class="node-sub" x="653" y="860">可阻止或升级；异常才返回 Sol</text>
-        </g>
-        <g class="raised">
-          <rect class="violet-card" x="1000" y="781" rx="24" ry="24" width="350" height="126"/>
-          <text class="node-title" x="1028" y="831">人工发布 L4</text>
-          <text class="node-sub" x="1028" y="860">最终合并始终由人触发</text>
-        </g>
-
-        <path class="connector" d="M800 934 V969"/>
-
-        <g class="hero">
-          <rect class="blue-card" x="250" y="992" rx="26" ry="26" width="1100" height="126"/>
-          <text class="node-title" x="280" y="1042">Agent 监测 Web UI :8765</text>
-          <text class="node-sub" x="280" y="1071">只读汇总 Desktop 与 Headless 名册、事件、进度和模型计量，不参与调度或发布。</text>
-        </g>
-
-        <line class="hairline" x1="72" y1="1158" x2="1528" y2="1158" opacity=".75"/>
-        <text class="foot" x="72" y="1186">核心原则：模型只做需要判断的规划与裁决；等待、轮询、计数、重试和状态迁移由脚本与状态机完成。</text>
-      </svg>
+  <title id="title">ZCode LOOP Orchestra 简化架构</title>
+  <desc id="desc">ZCode LOOP 的简化架构图，展示 Run、Stage、Wave、工作树、物化验收、审计和晋升流程。</desc>
+  <defs>
+    <linearGradient id="pageGlow" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="var(--glow-a)"/><stop offset="1" stop-color="var(--glow-b)"/></linearGradient>
+    <linearGradient id="blueWash" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="var(--blue-wash-a)"/><stop offset="1" stop-color="var(--blue-wash-b)"/></linearGradient>
+    <linearGradient id="violetWash" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="var(--violet-wash-a)"/><stop offset="1" stop-color="var(--violet-wash-b)"/></linearGradient>
+    <filter id="shadowSoft" x="-20%" y="-20%" width="140%" height="150%"><feDropShadow dx="0" dy="8" stdDeviation="14" flood-color="var(--shadow)" flood-opacity="0.10"/></filter>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L10,5 L0,10 z" fill="var(--line-strong)"/></marker>
+  </defs>
+  <style>
+    #architecture {
+      --bg:#f7f7f5; --surface:#ffffff; --surface-2:#f0f1ef; --ink:#151619; --muted:#666a73; --faint:#989da6;
+      --line:#d9dce1; --line-strong:#8f98a5; --shadow:#7a8492;
+      --blue:#1267e5; --blue-soft:#eaf3ff; --blue-stroke:#b9d6ff; --blue-wash-a:#ffffff; --blue-wash-b:#eef5ff;
+      --green:#168a50; --green-soft:#ebf8f0; --green-stroke:#c3e9d2;
+      --violet:#7651c9; --violet-soft:#f2edff; --violet-stroke:#d6c8fa; --violet-wash-a:#ffffff; --violet-wash-b:#f4f0ff;
+      --amber:#a86d00; --amber-soft:#fff6de; --amber-stroke:#edd49a;
+      --red:#c5413a; --red-soft:#fff0ee; --red-stroke:#f0beb9;
+      --glow-a:#ffffff; --glow-b:#eef1f5;
+      font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","SF Pro Text",Inter,"Segoe UI",Roboto,Arial,sans-serif;
+    }
+    #architecture.theme-dark {
+      --bg:#08090b; --surface:#111317; --surface-2:#171a1f; --ink:#f6f7f8; --muted:#a8aeb8; --faint:#737a86;
+      --line:#2a2f37; --line-strong:#737e8e; --shadow:#000000;
+      --blue:#66a6ff; --blue-soft:#0d1b2f; --blue-stroke:#234b7f; --blue-wash-a:#111722; --blue-wash-b:#0c1522;
+      --green:#55c983; --green-soft:#0f2118; --green-stroke:#24583a;
+      --violet:#ae8bff; --violet-soft:#1e1830; --violet-stroke:#523b7e; --violet-wash-a:#171421; --violet-wash-b:#12101b;
+      --amber:#e4ad45; --amber-soft:#251d0d; --amber-stroke:#624c1e;
+      --red:#ff8f86; --red-soft:#2c1514; --red-stroke:#713a36;
+      --glow-a:#0d1118; --glow-b:#090a0c;
+    }
+    .page{fill:var(--bg)} .decor{fill:url(#pageGlow)}
+    .title{fill:var(--ink);font-size:42px;font-weight:710;letter-spacing:-1.3px}
+    .subtitle{fill:var(--muted);font-size:17px;font-weight:430;letter-spacing:-0.15px}
+    .eyebrow{fill:var(--faint);font-size:12px;font-weight:700;letter-spacing:1.8px}
+    .stage{fill:var(--faint);font-size:14px;font-weight:760;letter-spacing:1.5px}
+    .node-title{fill:var(--ink);font-size:18px;font-weight:690;letter-spacing:-0.3px}
+    .node-sub{fill:var(--muted);font-size:12.2px;font-weight:460}
+    .section-note{fill:var(--muted);font-size:14px;font-weight:650;letter-spacing:-0.2px}
+    .foot{fill:var(--faint);font-size:10.8px;font-weight:500}
+    .box{fill:var(--surface);stroke:var(--line);stroke-width:1}
+    .blue-card{fill:url(#blueWash);stroke:var(--blue-stroke);stroke-width:1.2}
+    .green-card{fill:var(--surface);stroke:var(--green-stroke);stroke-width:1.2}
+    .violet-card{fill:url(#violetWash);stroke:var(--violet-stroke);stroke-width:1.2}
+    .amber-card{fill:var(--surface);stroke:var(--amber-stroke);stroke-width:1.2}
+    .red-card{fill:var(--surface);stroke:var(--red-stroke);stroke-width:1.2}
+    .connector{fill:none;stroke:var(--line-strong);stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round;marker-end:url(#arrow)}
+    .hairline{stroke:var(--line);stroke-width:1}
+    .raised{filter:url(#shadowSoft)} .hero{filter:url(#shadowSoft)}
+  </style>
+  <rect class="page" width="1600" height="1220"/>
+  <circle class="decor" cx="1502" cy="22" r="252" opacity=".65"/><circle class="decor" cx="110" cy="1160" r="210" opacity=".45"/>
+  <text class="eyebrow" x="72" y="54">系统架构 · 简化视图</text>
+  <text class="title" x="72" y="96">ZCode LOOP Orchestra</text>
+  <text class="subtitle" x="72" y="127">ZCode 原生生命周期控制与可审计并行执行的精简视图。</text>
+  <line class="hairline" x1="165" y1="198" x2="165" y2="1116" opacity=".9"/><circle cx="165" cy="212" r="4" fill="var(--line-strong)"/>
+  <text class="stage" x="78" y="218">输入</text><text class="stage" x="78" y="405">控制</text><text class="stage" x="78" y="624">执行</text><text class="stage" x="78" y="847">证据</text><text class="stage" x="78" y="1056">晋升</text>
+  <g class="hero"><rect class="box" x="250" y="168" rx="24" ry="24" width="575" height="92"/><text class="node-title" x="278" y="210">用户目标</text><text class="node-sub" x="278" y="238">项目目标先登记为可追踪的 Run。</text></g>
+  <g class="hero"><rect class="blue-card" x="858" y="168" rx="24" ry="24" width="492" height="92"/><text class="node-title" x="886" y="210">ZCode CLI 与控制库</text><text class="node-sub" x="886" y="238">run、stage、wave 与 c2c 命令</text></g>
+  <path class="connector" d="M800 286 V320"/><text class="section-note" x="800" y="306" text-anchor="middle">↓ run start → stage begin；波次启动前先落盘状态</text>
+  <g class="raised"><rect class="amber-card" x="250" y="355" rx="24" ry="24" width="350" height="118"/><text class="node-title" x="278" y="405">Run 与 Stage</text><text class="node-sub" x="278" y="434">风险底线、基线引用与阶段版本</text></g>
+  <g class="raised"><rect class="amber-card" x="625" y="355" rx="24" ry="24" width="350" height="118"/><text class="node-title" x="653" y="405">Wave 提案</text><text class="node-sub" x="653" y="434">任务包、依赖关系与写入范围</text></g>
+  <g class="raised"><rect class="amber-card" x="1000" y="355" rx="24" ry="24" width="350" height="118"/><text class="node-title" x="1028" y="405">C2C-P 计划记录</text><text class="node-sub" x="1028" y="434">有界、脱敏的计划审查回应</text></g>
+  <path class="connector" d="M800 500 V536"/><text class="section-note" x="800" y="522" text-anchor="middle">↓ 所有工作进程启动前先验证 Wave</text>
+  <g class="hero"><rect class="green-card" x="250" y="573" rx="24" ry="24" width="538" height="110"/><text class="node-title" x="278" y="623">冷波次监督器</text><text class="node-sub" x="278" y="652">按依赖派发，并使用非阻塞 poll() 驱动</text></g>
+  <g class="hero"><rect class="green-card" x="812" y="573" rx="24" ry="24" width="538" height="110"/><text class="node-title" x="840" y="623">每次启动独立 Git 工作树</text><text class="node-sub" x="840" y="652">一项启动对应一个工作区，并锁定路径范围</text></g>
+  <path class="connector" d="M800 708 V744"/><text class="section-note" x="800" y="730" text-anchor="middle">↓ 执行者返回报告；物化验收是独立门禁</text>
+  <g class="raised"><rect class="violet-card" x="250" y="781" rx="24" ry="24" width="350" height="126"/><text class="node-title" x="278" y="831">H0 日志与 CAS</text><text class="node-sub" x="278" y="860">类型化事件、脱敏载荷与哈希链证据</text></g>
+  <g class="raised"><rect class="violet-card" x="625" y="781" rx="24" ry="24" width="350" height="126"/><text class="node-title" x="653" y="831">物化与宿主验收</text><text class="node-sub" x="653" y="860">测试、Schema、哈希、差异与路径检查</text></g>
+  <g class="raised"><rect class="red-card" x="1000" y="781" rx="24" ry="24" width="350" height="126"/><text class="node-title" x="1028" y="831">失败时恢复暂存状态</text><text class="node-sub" x="1028" y="860">回到物化前的 staging SHA</text></g>
+  <path class="connector" d="M800 934 V969"/><text class="section-note" x="800" y="956" text-anchor="middle">↓ 只有已验收、已记录的证据才能进入晋升</text>
+  <g class="hero"><rect class="violet-card" x="250" y="992" rx="26" ry="26" width="350" height="126"/><text class="node-title" x="278" y="1042">C2C-A 结果记录</text><text class="node-sub" x="278" y="1071">有界复核回应，写入当前阶段</text></g>
+  <g class="hero"><rect class="blue-card" x="625" y="992" rx="26" ry="26" width="350" height="126"/><text class="node-title" x="653" y="1042">CAS 晋升门</text><text class="node-sub" x="653" y="1071">干净 HEAD 与 ff-only Git 晋升</text></g>
+  <g class="hero"><rect class="box" x="1000" y="992" rx="26" ry="26" width="350" height="126"/><text class="node-title" x="1028" y="1042">人工发布</text><text class="node-sub" x="1028" y="1071">最终晋升命令始终由人触发</text></g>
+  <line class="hairline" x1="72" y1="1158" x2="1528" y2="1158" opacity=".75"/>
+  <text class="foot" x="72" y="1186">ZCode 负责生命周期；模型对话提供有界计划与复核材料；Git 与 SQLite 是实际状态依据。</text>
+</svg>

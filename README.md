@@ -17,7 +17,7 @@
 
 ZCode can start and coordinate agents. LOOP adds the control loop that a long-running engineering workload needs: bounded planning, isolated worktrees, mechanical acceptance, independent audit, continuous refill, and human-controlled release.
 
-Give LOOP a goal and a concurrency target. It divides the work into bounded packets, dispatches them, and fills an open slot when a useful worker finishes. The root conversation stays focused on planning and judgment; scripts maintain routine lifecycle state; independent audit stages check the result; and a live web view shows what is actually running. You do not have to keep asking the system to continue, and no worker can publish by itself.
+Give LOOP a goal and a concurrency target. It divides the work into bounded packets, dispatches them, and fills an open slot when a useful worker finishes. The root conversation stays focused on planning and judgment; scripts maintain routine lifecycle state; independent audit stages check the result; and durable history makes each transition inspectable. You do not have to keep asking the system to continue, and no worker can publish by itself.
 
 ## Highlights
 
@@ -28,11 +28,7 @@ Give LOOP a goal and a concurrency target. It divides the work into bounded pack
 - **About 53% lower first-round input tokens:** Context pruning removes irrelevant tool and skill schemas before they reach an agent, leaving more room for the task itself.
 - **Atomic failure containment:** A failed candidate is rejected and its staging state is restored, preventing one poisoned task from cascading into the rest of the wave.
 - **True overlap instead of a blocking driver:** The asynchronous thread pool and non-blocking polling keep independent workers moving while the coordinator remains responsive.
-- **Agent Monitoring Web UI:** See task names, execution planes, observed models, health, evidence, and current concurrency in one read-only view.
-
-![ZCode LOOP live dashboard, showing active agents, runtimes, models, and task workloads](docs/assets/dashboard.en.png)
-
-<p align="center"><sub>One live view of the work that is actually running: agents, models, runtimes, health, and capacity.</sub></p>
+- **Inspectable lifecycle evidence:** H0 events, content-addressed blobs, control-database rows, and history commands make each run auditable across failures and restarts.
 
 ![ZCode LOOP simplified architecture: user objective, root conversation, DAG and lifecycle control, Desktop and headless execution, evidence, human release, and monitoring](docs/assets/architecture-simplified.en.svg)
 
@@ -97,13 +93,13 @@ LOOP is not just a way to start more agents. Each part addresses a failure mode 
 | A synchronous driver waits on the first task and makes the rest look parallel. | Use a non-blocking poll loop and an asynchronous worker pool. | **Get real overlap** and keep the coordinator responsive. |
 | One failed candidate contaminates later tasks in staging. | Run mechanical acceptance before promotion and restore failed staging atomically. | **Contain failure** instead of cascading it. |
 | The coordinator spends expensive turns on routine context and lifecycle work. | Prune irrelevant schemas and let scripts own waiting, counting, retry, and state transitions. | **Spend model capacity on decisions** and leave more room for the task. |
-| Random names and separate processes make operations hard to understand. | Keep semantic task names, observed model/runtime data, evidence, and a read-only monitoring surface together. | **Know what is running** and why a slot is empty. |
+| A run becomes difficult to reconstruct after a failure or restart. | Keep typed H0 events, content-addressed evidence, control-database state, bindings, and recovery history together. | **Explain what happened** and recover from degraded history. |
 
 The 8–15 concurrency figure and the roughly 53% first-round input reduction are project measurements, not official ZCode limits or a promise that every provider and machine will sustain the same load. Tune the target to the local model capacity and hardware.
 
 ## How LOOP works
 
-![ZCode LOOP full control-loop architecture: root coordination, plan audit, deterministic lifecycle control, execution planes, mechanical evidence, independent review, integration, human release, and read-only monitoring](docs/assets/architecture-overview.en.svg)
+![ZCode LOOP full control-loop architecture: run and stage control, wave supervision, worktree isolation, materialization, audit, promotion, and recovery](docs/assets/architecture-overview.en.svg)
 
 LOOP separates cognition, execution, evidence, review, integration, and release authority:
 
@@ -112,7 +108,7 @@ LOOP separates cognition, execution, evidence, review, integration, and release 
 - The **mechanical stage** runs tests, schema checks, hashes, and diff-boundary checks independently of the worker's self-report.
 - The **audit stage** reviews the evidence using an independently selected model and may approve, request rework, rank candidates, or escalate.
 - The **integration stage** serializes accepted writes; the **human stage** alone triggers merge or release.
-- The **Agent Monitoring Web UI** combines the execution rosters, lifecycle events, evidence, and capacity into a read-only operational view.
+- The **history and recovery path** exposes runs, stages, evidence, bindings, and degraded history as durable records across failures and restarts.
 
 ### Model routing
 

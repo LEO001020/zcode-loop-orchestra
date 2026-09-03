@@ -1,158 +1,170 @@
 <svg id="architecture" class="theme-light" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1220" role="img" aria-labelledby="title desc">
-        <title id="title">ZCode LOOP Orchestra simplified architecture</title>
-        <desc id="desc">A simplified premium keynote-style architecture diagram showing ZCode LOOP entry, control, execution, evidence and release, and observation layers.</desc>
-        <defs>
-          <linearGradient id="pageGlow" x1="0" y1="0" x2="1" y2="1">
-            <stop offset="0" stop-color="var(--glow-a)"/>
-            <stop offset="1" stop-color="var(--glow-b)"/>
-          </linearGradient>
-          <linearGradient id="blueWash" x1="0" y1="0" x2="1" y2="1">
-            <stop offset="0" stop-color="var(--blue-wash-a)"/>
-            <stop offset="1" stop-color="var(--blue-wash-b)"/>
-          </linearGradient>
-          <linearGradient id="violetWash" x1="0" y1="0" x2="1" y2="1">
-            <stop offset="0" stop-color="var(--violet-wash-a)"/>
-            <stop offset="1" stop-color="var(--violet-wash-b)"/>
-          </linearGradient>
-          <filter id="shadow" x="-20%" y="-20%" width="140%" height="160%">
-            <feDropShadow dx="0" dy="14" stdDeviation="22" flood-color="var(--shadow)" flood-opacity="0.16"/>
-          </filter>
-          <filter id="shadowSoft" x="-20%" y="-20%" width="140%" height="150%">
-            <feDropShadow dx="0" dy="8" stdDeviation="14" flood-color="var(--shadow)" flood-opacity="0.10"/>
-          </filter>
-          <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto" markerUnits="strokeWidth">
-            <path d="M0,0 L10,5 L0,10 z" fill="var(--line-strong)"/>
-          </marker>
-        </defs>
-        <style>
-          #architecture{
-            --bg:#f7f7f5;--surface:#ffffff;--surface-2:#f0f1ef;--ink:#151619;--muted:#666a73;--faint:#989da6;
-            --line:#d9dce1;--line-strong:#8f98a5;--shadow:#7a8492;
-            --blue:#1267e5;--blue-soft:#eaf3ff;--blue-stroke:#b9d6ff;--blue-wash-a:#ffffff;--blue-wash-b:#eef5ff;
-            --green:#168a50;--green-soft:#ebf8f0;--green-stroke:#c3e9d2;
-            --violet:#7651c9;--violet-soft:#f2edff;--violet-stroke:#d6c8fa;--violet-wash-a:#ffffff;--violet-wash-b:#f4f0ff;
-            --amber:#a86d00;--amber-soft:#fff6de;--amber-stroke:#edd49a;
-            --glow-a:#ffffff;--glow-b:#eef1f5;
-            font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","SF Pro Text",Inter,"Segoe UI",Roboto,Arial,sans-serif;
-          }
-          #architecture.theme-dark{
-            --bg:#08090b;--surface:#111317;--surface-2:#171a1f;--ink:#f6f7f8;--muted:#a8aeb8;--faint:#737a86;
-            --line:#2a2f37;--line-strong:#737e8e;--shadow:#000000;
-            --blue:#66a6ff;--blue-soft:#0d1b2f;--blue-stroke:#234b7f;--blue-wash-a:#111722;--blue-wash-b:#0c1522;
-            --green:#55c983;--green-soft:#0f2118;--green-stroke:#24583a;
-            --violet:#ae8bff;--violet-soft:#1e1830;--violet-stroke:#523b7e;--violet-wash-a:#171421;--violet-wash-b:#12101b;
-            --amber:#e4ad45;--amber-soft:#251d0d;--amber-stroke:#624c1e;
-            --glow-a:#0d1118;--glow-b:#090a0c;
-          }
-          .page{fill:var(--bg)} .decor{fill:url(#pageGlow)}
-          .title{fill:var(--ink);font-size:42px;font-weight:710;letter-spacing:-1.3px}
-          .subtitle{fill:var(--muted);font-size:17px;font-weight:430;letter-spacing:-0.15px}
-          .eyebrow{fill:var(--faint);font-size:12px;font-weight:700;letter-spacing:1.8px}
-          .stage{fill:var(--faint);font-size:14px;font-weight:760;letter-spacing:1.5px}
-          .node-title{fill:var(--ink);font-size:18px;font-weight:690;letter-spacing:-0.3px}
-          .node-sub{fill:var(--muted);font-size:12.2px;font-weight:460}
-          .node-note{fill:var(--faint);font-size:11px;font-weight:520}
-          .section-note{fill:var(--muted);font-size:14px;font-weight:650;letter-spacing:-0.2px}
-          .foot{fill:var(--faint);font-size:10.8px;font-weight:500}
-          .box{fill:var(--surface);stroke:var(--line);stroke-width:1}
-          .blue-card{fill:url(#blueWash);stroke:var(--blue-stroke);stroke-width:1.2}
-          .green-card{fill:var(--surface);stroke:var(--green-stroke);stroke-width:1.2}
-          .violet-card{fill:url(#violetWash);stroke:var(--violet-stroke);stroke-width:1.2}
-          .amber-card{fill:var(--surface);stroke:var(--amber-stroke);stroke-width:1.2}
-          .connector{fill:none;stroke:var(--line-strong);stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round;marker-end:url(#arrow)}
-          .connector-soft{fill:none;stroke:var(--line);stroke-width:1.25;stroke-linecap:round;stroke-linejoin:round}
-          .hairline{stroke:var(--line);stroke-width:1}
-          .chip{font-size:10px;font-weight:760;letter-spacing:.35px}
-          .raised{filter:url(#shadowSoft)} .hero{filter:url(#shadow)}
-        </style>
+  <title id="title">ZCode LOOP Orchestra simplified architecture</title>
+  <desc id="desc">A simplified keynote-style diagram of ZCode LOOP showing its run, stage, wave, worktree, materialization, audit, and promotion flow.</desc>
+  <defs>
+    <linearGradient id="pageGlow" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="var(--glow-a)"/>
+      <stop offset="1" stop-color="var(--glow-b)"/>
+    </linearGradient>
+    <linearGradient id="blueWash" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="var(--blue-wash-a)"/>
+      <stop offset="1" stop-color="var(--blue-wash-b)"/>
+    </linearGradient>
+    <linearGradient id="violetWash" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="var(--violet-wash-a)"/>
+      <stop offset="1" stop-color="var(--violet-wash-b)"/>
+    </linearGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="160%">
+      <feDropShadow dx="0" dy="14" stdDeviation="22" flood-color="var(--shadow)" flood-opacity="0.16"/>
+    </filter>
+    <filter id="shadowSoft" x="-20%" y="-20%" width="140%" height="150%">
+      <feDropShadow dx="0" dy="8" stdDeviation="14" flood-color="var(--shadow)" flood-opacity="0.10"/>
+    </filter>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L10,5 L0,10 z" fill="var(--line-strong)"/>
+    </marker>
+  </defs>
+  <style>
+    #architecture {
+      --bg:#f7f7f5; --surface:#ffffff; --surface-2:#f0f1ef; --ink:#151619; --muted:#666a73; --faint:#989da6;
+      --line:#d9dce1; --line-strong:#8f98a5; --shadow:#7a8492;
+      --blue:#1267e5; --blue-soft:#eaf3ff; --blue-stroke:#b9d6ff; --blue-wash-a:#ffffff; --blue-wash-b:#eef5ff;
+      --green:#168a50; --green-soft:#ebf8f0; --green-stroke:#c3e9d2;
+      --violet:#7651c9; --violet-soft:#f2edff; --violet-stroke:#d6c8fa; --violet-wash-a:#ffffff; --violet-wash-b:#f4f0ff;
+      --amber:#a86d00; --amber-soft:#fff6de; --amber-stroke:#edd49a;
+      --red:#c5413a; --red-soft:#fff0ee; --red-stroke:#f0beb9;
+      --glow-a:#ffffff; --glow-b:#eef1f5;
+      font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","SF Pro Text",Inter,"Segoe UI",Roboto,Arial,sans-serif;
+    }
+    #architecture.theme-dark {
+      --bg:#08090b; --surface:#111317; --surface-2:#171a1f; --ink:#f6f7f8; --muted:#a8aeb8; --faint:#737a86;
+      --line:#2a2f37; --line-strong:#737e8e; --shadow:#000000;
+      --blue:#66a6ff; --blue-soft:#0d1b2f; --blue-stroke:#234b7f; --blue-wash-a:#111722; --blue-wash-b:#0c1522;
+      --green:#55c983; --green-soft:#0f2118; --green-stroke:#24583a;
+      --violet:#ae8bff; --violet-soft:#1e1830; --violet-stroke:#523b7e; --violet-wash-a:#171421; --violet-wash-b:#12101b;
+      --amber:#e4ad45; --amber-soft:#251d0d; --amber-stroke:#624c1e;
+      --red:#ff8f86; --red-soft:#2c1514; --red-stroke:#713a36;
+      --glow-a:#0d1118; --glow-b:#090a0c;
+    }
+    .page{fill:var(--bg)} .decor{fill:url(#pageGlow)}
+    .title{fill:var(--ink);font-size:42px;font-weight:710;letter-spacing:-1.3px}
+    .subtitle{fill:var(--muted);font-size:17px;font-weight:430;letter-spacing:-0.15px}
+    .eyebrow{fill:var(--faint);font-size:12px;font-weight:700;letter-spacing:1.8px}
+    .stage{fill:var(--faint);font-size:14px;font-weight:760;letter-spacing:1.5px}
+    .node-title{fill:var(--ink);font-size:18px;font-weight:690;letter-spacing:-0.3px}
+    .node-sub{fill:var(--muted);font-size:12.2px;font-weight:460}
+    .section-note{fill:var(--muted);font-size:14px;font-weight:650;letter-spacing:-0.2px}
+    .foot{fill:var(--faint);font-size:10.8px;font-weight:500}
+    .box{fill:var(--surface);stroke:var(--line);stroke-width:1}
+    .blue-card{fill:url(#blueWash);stroke:var(--blue-stroke);stroke-width:1.2}
+    .green-card{fill:var(--surface);stroke:var(--green-stroke);stroke-width:1.2}
+    .violet-card{fill:url(#violetWash);stroke:var(--violet-stroke);stroke-width:1.2}
+    .amber-card{fill:var(--surface);stroke:var(--amber-stroke);stroke-width:1.2}
+    .red-card{fill:var(--surface);stroke:var(--red-stroke);stroke-width:1.2}
+    .connector{fill:none;stroke:var(--line-strong);stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round;marker-end:url(#arrow)}
+    .hairline{stroke:var(--line);stroke-width:1}
+    .raised{filter:url(#shadowSoft)} .hero{filter:url(#shadow)}
+    .blue-text{fill:var(--blue)} .green-text{fill:var(--green)} .violet-text{fill:var(--violet)} .amber-text{fill:var(--amber)} .red-text{fill:var(--red)}
+  </style>
 
-        <rect class="page" width="1600" height="1220"/>
-        <circle class="decor" cx="1502" cy="22" r="252" opacity=".65"/>
-        <circle class="decor" cx="110" cy="1160" r="210" opacity=".45"/>
+  <rect class="page" width="1600" height="1220"/>
+  <circle class="decor" cx="1502" cy="22" r="252" opacity=".65"/>
+  <circle class="decor" cx="110" cy="1160" r="210" opacity=".45"/>
 
-        <text class="eyebrow" x="72" y="54">SYSTEM ARCHITECTURE / SIMPLIFIED VIEW</text>
-        <text class="title" x="72" y="96">ZCode LOOP Orchestra</text>
-        <text class="subtitle" x="72" y="127">A concise view of the control loop and its execution planes.</text>
+  <text class="eyebrow" x="72" y="54">SYSTEM ARCHITECTURE / SIMPLIFIED VIEW</text>
+  <text class="title" x="72" y="96">ZCode LOOP Orchestra</text>
+  <text class="subtitle" x="72" y="127">A concise view of ZCode-native lifecycle control and auditable parallel execution.</text>
 
-        <line class="hairline" x1="165" y1="198" x2="165" y2="1116" opacity=".9"/>
-        <circle cx="165" cy="212" r="4" fill="var(--line-strong)"/>
-        <text class="stage" x="78" y="218">ENTRY</text>
-        <text class="stage" x="78" y="405">CONTROL</text>
-        <text class="stage" x="78" y="624">EXECUTE</text>
-        <text class="stage" x="78" y="847">EVIDENCE / RELEASE</text>
-        <text class="stage" x="78" y="1056">OBSERVE</text>
+  <line class="hairline" x1="165" y1="198" x2="165" y2="1116" opacity=".9"/>
+  <circle cx="165" cy="212" r="4" fill="var(--line-strong)"/>
+  <text class="stage" x="78" y="218">INPUT</text>
+  <text class="stage" x="78" y="405">CONTROL</text>
+  <text class="stage" x="78" y="624">EXECUTE</text>
+  <text class="stage" x="78" y="847">EVIDENCE</text>
+  <text class="stage" x="78" y="1056">PROMOTE</text>
 
-        <g class="hero">
-          <rect class="box" x="250" y="168" rx="24" ry="24" width="575" height="92"/>
-          <text class="node-title" x="278" y="210">User task</text>
-          <text class="node-sub" x="278" y="238">Goal, workspace, constraints, and acceptance criteria</text>
-        </g>
-        <g class="hero">
-          <rect class="blue-card" x="858" y="168" rx="24" ry="24" width="492" height="92"/>
-          <text class="node-title" x="886" y="210">ZCode root conversation</text>
-          <text class="node-sub" x="886" y="238">Planning, exception adjudication, and final synthesis only</text>
-        </g>
+  <g class="hero">
+    <rect class="box" x="250" y="168" rx="24" ry="24" width="575" height="92"/>
+    <text class="node-title" x="278" y="210">User objective</text>
+    <text class="node-sub" x="278" y="238">A project goal enters as a recorded run.</text>
+  </g>
+  <g class="hero">
+    <rect class="blue-card" x="858" y="168" rx="24" ry="24" width="492" height="92"/>
+    <text class="node-title" x="886" y="210">ZCode CLI + ControlStore</text>
+    <text class="node-sub" x="886" y="238">run, stage, wave, and c2c commands</text>
+  </g>
 
-        <path class="connector" d="M800 286 V320"/>
-        <text class="section-note" x="800" y="306" text-anchor="middle">↓ One plan becomes independently executable task packets</text>
+  <path class="connector" d="M800 286 V320"/>
+  <text class="section-note" x="800" y="306" text-anchor="middle">↓ run start → stage begin; state is durable before a wave starts</text>
 
-        <g class="raised">
-          <rect class="amber-card" x="250" y="355" rx="24" ry="24" width="350" height="118"/>
-          <text class="node-title" x="278" y="405">Packet DAG</text>
-          <text class="node-sub" x="278" y="434">Task packets, dependencies, and authorized paths</text>
-        </g>
-        <g class="raised">
-          <rect class="amber-card" x="625" y="355" rx="24" ry="24" width="350" height="118"/>
-          <text class="node-title" x="653" y="405">State machine</text>
-          <text class="node-sub" x="653" y="434">Plan, dispatch, report, review, complete</text>
-        </g>
-        <g class="raised">
-          <rect class="amber-card" x="1000" y="355" rx="24" ry="24" width="350" height="118"/>
-          <text class="node-title" x="1028" y="405">Dispatch and refill</text>
-          <text class="node-sub" x="1028" y="434">Maintain concurrency; retry by policy</text>
-        </g>
+  <g class="raised">
+    <rect class="amber-card" x="250" y="355" rx="24" ry="24" width="350" height="118"/>
+    <text class="node-title" x="278" y="405">Run + Stage</text>
+    <text class="node-sub" x="278" y="434">risk floor, base ref, and stage revision</text>
+  </g>
+  <g class="raised">
+    <rect class="amber-card" x="625" y="355" rx="24" ry="24" width="350" height="118"/>
+    <text class="node-title" x="653" y="405">Wave proposal</text>
+    <text class="node-sub" x="653" y="434">packets, dependencies, and write scopes</text>
+  </g>
+  <g class="raised">
+    <rect class="amber-card" x="1000" y="355" rx="24" ry="24" width="350" height="118"/>
+    <text class="node-title" x="1028" y="405">C2C-P plan record</text>
+    <text class="node-sub" x="1028" y="434">bounded, redacted planning response</text>
+  </g>
 
-        <path class="connector" d="M800 500 V536"/>
-        <text class="section-note" x="800" y="522" text-anchor="middle">↓ Explicit model, role, and reasoning settings; no inherited root model</text>
+  <path class="connector" d="M800 500 V536"/>
+  <text class="section-note" x="800" y="522" text-anchor="middle">↓ validate the wave before any worker starts</text>
 
-        <g class="hero">
-          <rect class="green-card" x="250" y="573" rx="24" ry="24" width="538" height="110"/>
-          <text class="node-title" x="278" y="623">ZCode Desktop plane</text>
-          <text class="node-sub" x="278" y="652">A visible native surface for interactive and short tasks</text>
-        </g>
-        <g class="hero">
-          <rect class="green-card" x="812" y="573" rx="24" ry="24" width="538" height="110"/>
-          <text class="node-title" x="840" y="623">Supervised headless plane</text>
-          <text class="node-sub" x="840" y="652">Broader waves under lifecycle supervision</text>
-        </g>
+  <g class="hero">
+    <rect class="green-card" x="250" y="573" rx="24" ry="24" width="538" height="110"/>
+    <text class="node-title" x="278" y="623">Cold wave supervisor</text>
+    <text class="node-sub" x="278" y="652">dependency-aware dispatch with non-blocking poll()</text>
+  </g>
+  <g class="hero">
+    <rect class="green-card" x="812" y="573" rx="24" ry="24" width="538" height="110"/>
+    <text class="node-title" x="840" y="623">Private Git worktrees</text>
+    <text class="node-sub" x="840" y="652">one launch, one workspace, explicit path scope</text>
+  </g>
 
-        <path class="connector" d="M800 708 V744"/>
-        <text class="section-note" x="800" y="730" text-anchor="middle">↓ Workers return artifacts; verifiers and reviewers inspect them read-only</text>
+  <path class="connector" d="M800 708 V744"/>
+  <text class="section-note" x="800" y="730" text-anchor="middle">↓ workers return reports; materialization is a separate gate</text>
 
-        <g class="raised">
-          <rect class="violet-card" x="250" y="781" rx="24" ry="24" width="350" height="126"/>
-          <text class="node-title" x="278" y="831">Mechanical acceptance L0/L1</text>
-          <text class="node-sub" x="278" y="860">Tests, hashes, paths, schemas, and diffs</text>
-        </g>
-        <g class="raised">
-          <rect class="violet-card" x="625" y="781" rx="24" ry="24" width="350" height="126"/>
-          <text class="node-title" x="653" y="831">Cross-check L2/L3</text>
-          <text class="node-sub" x="653" y="860">Block or escalate; anomalies return to root</text>
-        </g>
-        <g class="raised">
-          <rect class="violet-card" x="1000" y="781" rx="24" ry="24" width="350" height="126"/>
-          <text class="node-title" x="1028" y="831">Human release L4</text>
-          <text class="node-sub" x="1028" y="860">Final merge is triggered by a person</text>
-        </g>
+  <g class="raised">
+    <rect class="violet-card" x="250" y="781" rx="24" ry="24" width="350" height="126"/>
+    <text class="node-title" x="278" y="831">H0 journal + CAS</text>
+    <text class="node-sub" x="278" y="860">typed events, redacted payloads, hash-linked evidence</text>
+  </g>
+  <g class="raised">
+    <rect class="violet-card" x="625" y="781" rx="24" ry="24" width="350" height="126"/>
+    <text class="node-title" x="653" y="831">Materialize + accept</text>
+    <text class="node-sub" x="653" y="860">tests, schema, hashes, diff and path checks</text>
+  </g>
+  <g class="raised">
+    <rect class="red-card" x="1000" y="781" rx="24" ry="24" width="350" height="126"/>
+    <text class="node-title" x="1028" y="831">Rollback on failure</text>
+    <text class="node-sub" x="1028" y="860">restore staging to its pre-materialization SHA</text>
+  </g>
 
-        <path class="connector" d="M800 934 V969"/>
+  <path class="connector" d="M800 934 V969"/>
+  <text class="section-note" x="800" y="956" text-anchor="middle">↓ only accepted, recorded evidence can approach promotion</text>
 
-        <g class="hero">
-          <rect class="blue-card" x="250" y="992" rx="26" ry="26" width="1100" height="126"/>
-          <text class="node-title" x="280" y="1042">Agent Monitoring Web UI :8765</text>
-          <text class="node-sub" x="280" y="1071">Read-only view of desktop/headless rosters, events, progress, and model metrics; it does not schedule or release.</text>
-        </g>
+  <g class="hero">
+    <rect class="violet-card" x="250" y="992" rx="26" ry="26" width="350" height="126"/>
+    <text class="node-title" x="278" y="1042">C2C-A result record</text>
+    <text class="node-sub" x="278" y="1071">bounded review response, recorded for the stage</text>
+  </g>
+  <g class="hero">
+    <rect class="blue-card" x="625" y="992" rx="26" ry="26" width="350" height="126"/>
+    <text class="node-title" x="653" y="1042">CAS promotion gate</text>
+    <text class="node-sub" x="653" y="1071">clean HEAD and ff-only Git promotion</text>
+  </g>
+  <g class="hero">
+    <rect class="box" x="1000" y="992" rx="26" ry="26" width="350" height="126"/>
+    <text class="node-title" x="1028" y="1042">Human release</text>
+    <text class="node-sub" x="1028" y="1071">the final promotion command is human-triggered</text>
+  </g>
 
-        <line class="hairline" x1="72" y1="1158" x2="1528" y2="1158" opacity=".75"/>
-        <text class="foot" x="72" y="1186">核心原则：模型只做需要判断的规划与裁决；等待、轮询、计数、重试和状态迁移由脚本与State machine完成。</text>
-      </svg>
+  <line class="hairline" x1="72" y1="1158" x2="1528" y2="1158" opacity=".75"/>
+  <text class="foot" x="72" y="1186">ZCode runs the lifecycle; model conversations supply bounded plans and review material; Git and SQLite remain physical oracles.</text>
+</svg>
