@@ -1,4 +1,4 @@
-<svg id="zloop-overview-zh" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1320" role="img" aria-labelledby="title desc">
+<svg id="zloop-overview-zh" xmlns="http://www.w3.org/2000/svg" width="1600" height="1320" viewBox="0 0 1600 1320" role="img" aria-labelledby="title desc">
   <title id="title">ZCode LOOP Orchestra 完整架构</title>
   <desc id="desc">从用户目标到人工合并：主 ZCode Agent 负责判断，ZLoop 保存状态和调度任务，执行 Agent 在独立工作区并行工作，真实证据与独立模型复核结果，最终由人发布。</desc>
   <defs>

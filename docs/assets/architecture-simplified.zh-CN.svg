@@ -1,4 +1,4 @@
-<svg id="zloop-simple-zh" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1220" role="img" aria-labelledby="title desc">
+<svg id="zloop-simple-zh" xmlns="http://www.w3.org/2000/svg" width="1600" height="1220" viewBox="0 0 1600 1220" role="img" aria-labelledby="title desc">
   <title id="title">ZCode LOOP Orchestra 简化架构</title>
   <desc id="desc">ZCode 负责理解目标，ZLoop 负责保存状态、调度隔离的执行 Agent、检查真实改动、安排独立复核和失败恢复，最终由人决定是否合并。</desc>
   <defs>
